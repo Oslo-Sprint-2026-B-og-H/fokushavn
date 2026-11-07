@@ -104,7 +104,10 @@ async function generateWithRetry(ai: GoogleGenAI, prompt: string) {
         return await ai.models.generateContent({
           model,
           contents: prompt,
-          config: { responseMimeType: "application/json" },
+          config: {
+            responseMimeType: "application/json",
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         });
       } catch (err) {
         lastError = err;
