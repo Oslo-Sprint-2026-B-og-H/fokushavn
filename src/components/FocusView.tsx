@@ -251,7 +251,7 @@ function FocusSession({
       </div>
 
       {confirmOpen && <LeaveConfirmDialog onCancel={() => setConfirmOpen(false)} onLeave={onLeave} />}
-      <VoiceAgent />
+      <VoiceAgent step={step} vocabulary={session.vocabulary} />
     </div>
   );
 }

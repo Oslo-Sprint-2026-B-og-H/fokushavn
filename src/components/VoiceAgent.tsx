@@ -3,8 +3,26 @@ import { useConversation } from '@elevenlabs/react';
 import { Loader2, Mic, Square } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { fetchConversationToken } from '@/lib/elevenlabs';
+import type { VocabularyItem } from '@/lib/breakdown';
+import type { SavedStep } from '@/lib/sessions';
 
-function VoiceAgent() {
+type VoiceAgentProps = {
+  step: SavedStep;
+  vocabulary: VocabularyItem[];
+};
+
+function buildDynamicVariables(step: SavedStep, vocabulary: VocabularyItem[]) {
+  return {
+    current_task: step.text,
+    current_hints: step.hints.length > 0 ? step.hints.join(' | ') : 'No hints available.',
+    current_vocabulary:
+      vocabulary.length > 0
+        ? vocabulary.map((item) => `${item.word}: ${item.definition}`).join(' | ')
+        : 'None',
+  };
+}
+
+function VoiceAgent({ step, vocabulary }: VoiceAgentProps) {
   const { t } = useLanguage();
   const [isStarting, setIsStarting] = useState(false);
   const [startFailed, setStartFailed] = useState(false);
@@ -25,7 +43,11 @@ function VoiceAgent() {
       const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
       microphone.getTracks().forEach((track) => track.stop());
       const token = await fetchConversationToken();
-      startSession({ conversationToken: token, connectionType: 'webrtc' });
+      startSession({
+        conversationToken: token,
+        connectionType: 'webrtc',
+        dynamicVariables: buildDynamicVariables(step, vocabulary),
+      });
     } catch {
       setStartFailed(true);
     } finally {
