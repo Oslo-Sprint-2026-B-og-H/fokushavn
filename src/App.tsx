@@ -11,6 +11,7 @@ import { useAuthSession } from '@/hooks/useAuthSession';
 import { useProfileName } from '@/hooks/useProfileName';
 import { signOut } from '@/lib/auth';
 import { breakDownHomework, MAX_HOMEWORK_CHARS } from '@/lib/breakdown';
+import { readHomeworkFile, validateHomeworkFile } from '@/lib/homeworkFile';
 import {
   createSession,
   loadSession,
@@ -21,6 +22,7 @@ import {
 type View = 'input' | 'loading' | 'focus' | 'complete';
 
 const GENERIC_ERROR = 'Something went wrong — try again.';
+const TOO_LONG_FILE_ERROR = "That file has too much text. Try a shorter file or paste just the main assignment.";
 const LOGOUT_ERROR = "Couldn't log out — try again.";
 const SIGNUP_NOTICE = 'Sign up to save your steps and pick up where you left off.';
 const NO_CHANGES_NOTICE = 'No changes made to the homework.';
@@ -41,6 +43,7 @@ function App() {
     null;
   const [view, setView] = useState<View>('input');
   const [homework, setHomework] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [sourceHomework, setSourceHomework] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<SavedSession | null>(null);
   const [startIndex, setStartIndex] = useState(0);
@@ -59,14 +62,14 @@ function App() {
 
   async function handleBreakItDown() {
     const text = homework.trim();
-    if (!text || text.length > MAX_HOMEWORK_CHARS) return;
+    if ((!text && !file) || text.length > MAX_HOMEWORK_CHARS) return;
 
     if (!authSession) {
       setAuthModal({ mode: 'signup', notice: SIGNUP_NOTICE });
       return;
     }
 
-    if (sourceHomework !== null && text === sourceHomework) {
+    if (!file && sourceHomework !== null && text === sourceHomework) {
       setNotice({ message: NO_CHANGES_NOTICE, id: Date.now() });
       return;
     }
@@ -76,16 +79,37 @@ function App() {
     setView('loading');
 
     try {
-      const breakdown = await breakDownHomework(text);
+      const attachment = file ? await readHomeworkFile(file) : null;
+      const promptText =
+        attachment?.kind === 'text' ? [text, attachment.text.trim()].filter(Boolean).join('\n\n') : text;
+      if (promptText.length > MAX_HOMEWORK_CHARS) {
+        setErrorMessage(TOO_LONG_FILE_ERROR);
+        setView('input');
+        return;
+      }
+
+      const inlineFile = attachment?.kind === 'inline' ? attachment : undefined;
+      const breakdown = await breakDownHomework(promptText, inlineFile);
       const saved = await createSession(text, breakdown);
       setActiveSession(saved);
       setSourceHomework(null);
+      setFile(null);
       setStartIndex(0);
       setView('focus');
     } catch {
       setErrorMessage(GENERIC_ERROR);
       setView('input');
     }
+  }
+
+  function handleFileSelect(selected: File) {
+    const error = validateHomeworkFile(selected);
+    if (error) {
+      setErrorMessage(error);
+      return;
+    }
+    setErrorMessage(null);
+    setFile(selected);
   }
 
   async function handleResume(sessionId: string) {
@@ -110,6 +134,7 @@ function App() {
 
   function returnToInput() {
     setHomework('');
+    setFile(null);
     setSourceHomework(null);
     setActiveSession(null);
     setStartIndex(0);
@@ -166,9 +191,12 @@ function App() {
             />
             <InputView
               value={homework}
+              file={file}
               errorMessage={errorMessage}
               notice={notice?.message ?? null}
               onChange={setHomework}
+              onFileSelect={handleFileSelect}
+              onFileRemove={() => setFile(null)}
               onSubmit={handleBreakItDown}
             />
             {authSession && <RecentSessions onResume={handleResume} />}

@@ -7,8 +7,14 @@ const corsHeaders = {
 };
 
 const MAX_CHARS = 5000;
+const MAX_INLINE_CHARS = Math.ceil((20 * 1024 * 1024 * 4) / 3) + 16;
+const ALLOWED_INLINE_MIME_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg']);
+const FILE_INSTRUCTION =
+  'If a file is attached, extract the homework content from it. If the text box also contains instructions, combine them.';
 
-const SYSTEM_PROMPT = `You are an elite educational psychologist and instructional designer. Your job is to take any homework assignment and break it into the most scientifically optimal, ADHD-friendly micro-steps. You must embed the actual homework content directly into the steps.
+const SYSTEM_PROMPT = `You may receive an image or PDF document alongside text. If a document is provided, your first job is to read it carefully (extract text, read math problems, interpret diagrams). Use the extracted content from the document as the homework assignment and break it down into steps just like you would with pasted text.
+
+You are an elite educational psychologist and instructional designer. Your job is to take any homework assignment and break it into the most scientifically optimal, ADHD-friendly micro-steps. You must embed the actual homework content directly into the steps.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -94,14 +100,19 @@ function jsonResponse(body: unknown, status = 200) {
 const MODELS = ["gemini-3.8-flash", "gemini-3.7-flash"];
 const MAX_ATTEMPTS = 3;
 
-async function generateWithRetry(ai: GoogleGenAI, homework: string) {
+type InlineFile = { mimeType: string; data: string };
+type GeminiContents =
+  | string
+  | [{ role: "user"; parts: ({ text: string } | { inlineData: InlineFile })[] }];
+
+async function generateWithRetry(ai: GoogleGenAI, contents: GeminiContents) {
   let lastError: unknown;
   for (const model of MODELS) {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
         return await ai.models.generateContent({
           model,
-          contents: homework,
+          contents,
           config: {
             systemInstruction: SYSTEM_PROMPT,
             responseMimeType: "application/json",
@@ -126,9 +137,28 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json();
     const homework = typeof body?.text === "string" ? body.text.trim() : "";
+    const file = body?.file ?? null;
 
-    if (!homework || homework.length > MAX_CHARS) {
-      return jsonResponse({ error: "Homework text is missing or too long" }, 400);
+    if (homework.length > MAX_CHARS) {
+      return jsonResponse({ error: "Homework text is too long" }, 400);
+    }
+
+    let inlineFile: InlineFile | null = null;
+    if (file !== null) {
+      const isValid =
+        typeof file.mimeType === "string" &&
+        ALLOWED_INLINE_MIME_TYPES.has(file.mimeType) &&
+        typeof file.data === "string" &&
+        file.data.length > 0 &&
+        file.data.length <= MAX_INLINE_CHARS;
+      if (!isValid) {
+        return jsonResponse({ error: "File is missing or unsupported" }, 400);
+      }
+      inlineFile = { mimeType: file.mimeType, data: file.data };
+    }
+
+    if (!homework && !inlineFile) {
+      return jsonResponse({ error: "Homework text or file is required" }, 400);
     }
 
     // Requires the GEMINI_API_KEY environment variable to be set for this function.
@@ -138,7 +168,18 @@ Deno.serve(async (req: Request) => {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const response = await generateWithRetry(ai, homework);
+    const contents: GeminiContents = inlineFile
+      ? [
+          {
+            role: "user",
+            parts: [
+              { text: homework ? `${homework}\n\n${FILE_INSTRUCTION}` : FILE_INSTRUCTION },
+              { inlineData: inlineFile },
+            ],
+          },
+        ]
+      : homework;
+    const response = await generateWithRetry(ai, contents);
 
     return jsonResponse({ text: response.text ?? "" });
   } catch (err) {

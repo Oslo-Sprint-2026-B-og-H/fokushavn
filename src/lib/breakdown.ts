@@ -1,3 +1,5 @@
+import type { InlineFile } from '@/lib/homeworkFile';
+
 export const MAX_HOMEWORK_CHARS = 5000;
 
 export type StepType = 'action' | 'break';
@@ -94,7 +96,7 @@ export function parseBreakdown(raw: string): Breakdown {
   };
 }
 
-export async function breakDownHomework(text: string): Promise<Breakdown> {
+export async function breakDownHomework(text: string, file?: InlineFile): Promise<Breakdown> {
   const response = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {
@@ -102,7 +104,7 @@ export async function breakDownHomework(text: string): Promise<Breakdown> {
       apikey: ANON_KEY,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, file }),
   });
 
   if (!response.ok) {
