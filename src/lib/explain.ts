@@ -1,7 +1,9 @@
+import type { Language } from '@/lib/translations';
+
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/explain-text`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export async function explainText(selectedText: string): Promise<string> {
+export async function explainText(selectedText: string, language: Language): Promise<string> {
   const response = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {
@@ -9,7 +11,7 @@ export async function explainText(selectedText: string): Promise<string> {
       apikey: ANON_KEY,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ text: selectedText }),
+    body: JSON.stringify({ text: selectedText, language }),
   });
 
   if (!response.ok) {

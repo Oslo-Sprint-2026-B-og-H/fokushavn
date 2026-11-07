@@ -60,16 +60,18 @@ function popoverStyle(rect: DOMRect): CSSProperties {
 }
 
 function PopoverBody({ highlight }: { highlight: Highlight }) {
+  const { t } = useLanguage();
   if (highlight.status === 'loading') {
-    return <p className="text-ink/60">Thinking...</p>;
+    return <p className="text-ink/60">{t('thinking')}</p>;
   }
   if (highlight.status === 'error') {
-    return <p className="text-red-600">Couldn't get an explanation. Close this and try again.</p>;
+    return <p className="text-red-600">{t('explainError')}</p>;
   }
   return <p>{highlight.answer}</p>;
 }
 
 function HighlightExplainer({ children }: { children: ReactNode }) {
+  const { t, language } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -111,7 +113,7 @@ function HighlightExplainer({ children }: { children: ReactNode }) {
       current !== null && current.text === text && current.status === 'loading';
 
     try {
-      const answer = await explainText(text);
+      const answer = await explainText(text, language);
       setHighlight((current) =>
         isCurrentRequest(current) && current ? { ...current, status: 'ready', answer } : current,
       );
@@ -186,7 +188,7 @@ function HighlightExplainer({ children }: { children: ReactNode }) {
             className="animate-fade-in-quick fixed z-50 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-[#4A90D9] px-3 py-1.5 text-sm font-semibold text-white shadow-md transition-transform hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/40"
           >
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            Explain
+            {t('explain')}
           </button>,
           document.body,
         )}
@@ -196,7 +198,7 @@ function HighlightExplainer({ children }: { children: ReactNode }) {
           <div
             ref={popoverRef}
             role="dialog"
-            aria-label="Explanation"
+            aria-label={t('explanation')}
             style={popoverStyle(highlight.rect)}
             className="animate-fade-in-quick fixed z-50 flex flex-col gap-3 overflow-y-auto overscroll-contain rounded-2xl border border-ink/10 bg-white p-5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
           >
@@ -207,7 +209,7 @@ function HighlightExplainer({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={dismiss}
-                aria-label="Close explanation"
+                aria-label={t('closeExplanation')}
                 className="-mr-1 -mt-1 shrink-0 rounded-md p-1 text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30"
               >
                 <X className="h-4 w-4" aria-hidden="true" />

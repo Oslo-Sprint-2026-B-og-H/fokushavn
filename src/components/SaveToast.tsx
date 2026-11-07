@@ -19,7 +19,7 @@ function SaveToast({ onDone }: SaveToastProps) {
       role="status"
       className="pointer-events-none fixed left-1/2 top-6 z-50 -translate-x-1/2 animate-toast rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white shadow-lg"
     >
-      Session saved
+      {t('sessionSaved')}
     </div>
   );
 }

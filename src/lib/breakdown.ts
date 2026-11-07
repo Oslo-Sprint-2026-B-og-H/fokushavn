@@ -1,4 +1,5 @@
 import type { InlineFile } from '@/lib/homeworkFile';
+import type { Language } from '@/lib/translations';
 
 export const MAX_HOMEWORK_CHARS = 5000;
 
@@ -96,7 +97,11 @@ export function parseBreakdown(raw: string): Breakdown {
   };
 }
 
-export async function breakDownHomework(text: string, files: InlineFile[]): Promise<Breakdown> {
+export async function breakDownHomework(
+  text: string,
+  files: InlineFile[],
+  language: Language,
+): Promise<Breakdown> {
   const response = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {
@@ -104,7 +109,7 @@ export async function breakDownHomework(text: string, files: InlineFile[]): Prom
       apikey: ANON_KEY,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ text, files }),
+    body: JSON.stringify({ text, files, language }),
   });
 
   if (!response.ok) {

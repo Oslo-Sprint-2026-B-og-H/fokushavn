@@ -13,6 +13,12 @@ const ALLOWED_INLINE_MIME_TYPES = new Set(['application/pdf', 'image/png', 'imag
 const FILE_INSTRUCTION =
   'If files are attached, extract the homework content from them. If the text box also contains instructions, combine them.';
 
+function languageInstruction(language: string) {
+  return language === "no"
+    ? "Write all titles, instructions, vocabulary definitions, and hints in Norwegian (bokmål). Keep embedded homework content in its original language."
+    : "Write all titles, instructions, vocabulary definitions, and hints in English. Keep embedded homework content in its original language.";
+}
+
 const SYSTEM_PROMPT = `You may receive one or more images or PDF documents alongside text. If documents are provided, your first job is to read them carefully (extract text, read math problems, interpret diagrams). Use the extracted content from the documents as the homework assignment and break it down into steps just like you would with pasted text.
 
 You are an elite educational psychologist and instructional designer. Your job is to take any homework assignment and break it into the most scientifically optimal, ADHD-friendly micro-steps. You must embed the actual homework content directly into the steps.
@@ -106,7 +112,7 @@ type GeminiContents =
   | string
   | [{ role: "user"; parts: ({ text: string } | { inlineData: InlineFile })[] }];
 
-async function generateWithRetry(ai: GoogleGenAI, contents: GeminiContents) {
+async function generateWithRetry(ai: GoogleGenAI, contents: GeminiContents, systemPrompt: string) {
   let lastError: unknown;
   for (const model of MODELS) {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -115,7 +121,7 @@ async function generateWithRetry(ai: GoogleGenAI, contents: GeminiContents) {
           model,
           contents,
           config: {
-            systemInstruction: SYSTEM_PROMPT,
+            systemInstruction: systemPrompt,
             responseMimeType: "application/json",
           },
         });
@@ -139,6 +145,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const homework = typeof body?.text === "string" ? body.text.trim() : "";
     const rawFiles: unknown = body?.files ?? [];
+    const language = typeof body?.language === "string" ? body.language : "en";
 
     if (homework.length > MAX_CHARS) {
       return jsonResponse({ error: "Homework text is too long" }, 400);
@@ -188,7 +195,11 @@ Deno.serve(async (req: Request) => {
           },
         ]
       : homework;
-    const response = await generateWithRetry(ai, contents);
+    const response = await generateWithRetry(
+      ai,
+      contents,
+      `${SYSTEM_PROMPT}\n\n${languageInstruction(language)}`,
+    );
 
     return jsonResponse({ text: response.text ?? "" });
   } catch (err) {

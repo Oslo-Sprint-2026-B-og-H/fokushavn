@@ -97,6 +97,7 @@ function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) 
         {notice ? <p className="pr-10 text-sm leading-[1.5] text-ink/60">{notice}</p> : null}
         <h2 id="auth-modal-title" className="pr-10 text-2xl font-bold leading-[1.2] text-ink">
           {t(copy.title)}
+        </h2>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           {mode === 'signup' ? (
@@ -147,6 +148,7 @@ function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) 
             className="mt-2 w-full rounded-xl bg-accent px-6 py-3 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
           {t(copy.title)}
+          </button>
 
           {errorMessage ? (
             <p role="alert" className="text-sm font-medium text-red-600">

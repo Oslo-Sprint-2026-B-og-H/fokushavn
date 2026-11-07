@@ -47,6 +47,7 @@ function StepPanel({
           {isBreak ? (
             <span className="rounded-full bg-[#F3F3F3] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink/70">
               {t('stepBreak')}
+            </span>
           ) : null}
         </div>
         <StepTimer durationSeconds={stepDurationSeconds(step.est_minutes)} running={timerRunning} />
