@@ -8,7 +8,7 @@ type RecentSessionsProps = {
 };
 
 function RecentSessions({ onResume }: RecentSessionsProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [sessions, setSessions] = useState<RecentSession[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -59,7 +59,7 @@ function RecentSessions({ onResume }: RecentSessionsProps) {
         {visibleSessions.map((session) => (
           <li key={session.id} className="flex items-center justify-between gap-4 px-5 py-4">
             <div className="min-w-0">
-              <p className="break-words text-base font-medium text-ink">{session.session_title}</p>
+              <p className="break-words text-base font-medium text-ink">{language === 'no' ? session.session_title_no : session.session_title_en}</p>
               <p className="mt-1 text-sm text-ink/60">{formatRelativeDate(session.created_at, t)}</p>
             </div>
             <button

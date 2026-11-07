@@ -31,7 +31,8 @@ export type LocalizedSession = Pick<SavedSession, 'id' | 'homework_text' | 'file
 
 export type RecentSession = {
   id: string;
-  session_title: string;
+  session_title_en: string;
+  session_title_no: string;
   created_at: string;
 };
 
@@ -74,7 +75,7 @@ function isStepRow(value: unknown): value is StepRow {
   );
 }
 
-function isRecentRow(value: unknown): value is RecentSession {
+function isRecentRow(value: unknown): value is { id: string; session_title: string; title_en: unknown; title_no: unknown; created_at: string } {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&
@@ -179,7 +180,7 @@ export function localizeSession(session: SavedSession, language: Language): Loca
 export async function listRecentSessions(): Promise<RecentSession[]> {
   const { data, error } = await supabase
     .from('sessions')
-    .select('id, session_title, created_at')
+    .select('id, session_title, title_en, title_no, created_at')
     .order('created_at', { ascending: false })
     .limit(RECENT_LIMIT);
 
@@ -187,7 +188,12 @@ export async function listRecentSessions(): Promise<RecentSession[]> {
     throw new Error('Could not load sessions');
   }
 
-  return data;
+  return data.map((row) => ({
+    id: row.id,
+    session_title_en: typeof row.title_en === 'string' ? row.title_en : row.session_title,
+    session_title_no: typeof row.title_no === 'string' ? row.title_no : row.session_title,
+    created_at: row.created_at,
+  }));
 }
 
 export async function loadSession(sessionId: string): Promise<SavedSession> {
