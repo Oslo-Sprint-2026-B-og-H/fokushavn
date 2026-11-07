@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { parseHints, parseVocabulary, type Breakdown, type Step, type VocabularyItem } from '@/lib/breakdown';
+import { parseStoredFiles, type StoredFile } from '@/lib/homeworkFile';
 
 export type SavedStep = Step & {
   id: string;
@@ -12,6 +13,7 @@ export type SavedSession = {
   session_title: string;
   homework_text: string;
   vocabulary: VocabularyItem[];
+  files: StoredFile[];
   steps: SavedStep[];
 };
 
@@ -63,13 +65,18 @@ function toSavedSteps(rows: unknown[]): SavedStep[] {
     .sort((a, b) => a.step_number - b.step_number);
 }
 
-export async function createSession(homeworkText: string, breakdown: Breakdown): Promise<SavedSession> {
+export async function createSession(
+  homeworkText: string,
+  breakdown: Breakdown,
+  files: StoredFile[],
+): Promise<SavedSession> {
   const { data: session, error: sessionError } = await supabase
     .from('sessions')
     .insert({
       homework_text: homeworkText,
       session_title: breakdown.session_title,
       vocabulary: breakdown.vocabulary,
+      files_data: files,
     })
     .select('id')
     .single();
@@ -99,6 +106,7 @@ export async function createSession(homeworkText: string, breakdown: Breakdown):
     session_title: breakdown.session_title,
     homework_text: homeworkText,
     vocabulary: breakdown.vocabulary,
+    files,
     steps: toSavedSteps(rows),
   };
 }
@@ -120,7 +128,7 @@ export async function listRecentSessions(): Promise<RecentSession[]> {
 export async function loadSession(sessionId: string): Promise<SavedSession> {
   const { data: session, error: sessionError } = await supabase
     .from('sessions')
-    .select('id, session_title, homework_text, vocabulary')
+    .select('id, session_title, homework_text, vocabulary, files_data')
     .eq('id', sessionId)
     .maybeSingle();
 
@@ -146,6 +154,7 @@ export async function loadSession(sessionId: string): Promise<SavedSession> {
     session_title: session.session_title,
     homework_text: session.homework_text,
     vocabulary: parseVocabulary(session.vocabulary),
+    files: parseStoredFiles(session.files_data),
     steps: toSavedSteps(rows),
   };
 }

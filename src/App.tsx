@@ -11,7 +11,16 @@ import { useAuthSession } from '@/hooks/useAuthSession';
 import { useProfileName } from '@/hooks/useProfileName';
 import { signOut } from '@/lib/auth';
 import { breakDownHomework, MAX_HOMEWORK_CHARS } from '@/lib/breakdown';
-import { readHomeworkFile, validateHomeworkFile } from '@/lib/homeworkFile';
+import {
+  buildPromptText,
+  FILE_READ_ERROR_MESSAGE,
+  isSameFileList,
+  readStoredFile,
+  storedFileToFile,
+  toInlineFiles,
+  validateNewFiles,
+  type StoredFile,
+} from '@/lib/homeworkFile';
 import {
   createSession,
   loadSession,
@@ -43,8 +52,9 @@ function App() {
     null;
   const [view, setView] = useState<View>('input');
   const [homework, setHomework] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [sourceHomework, setSourceHomework] = useState<string | null>(null);
+  const [sourceFiles, setSourceFiles] = useState<File[]>([]);
   const [activeSession, setActiveSession] = useState<SavedSession | null>(null);
   const [startIndex, setStartIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(0);
@@ -62,14 +72,14 @@ function App() {
 
   async function handleBreakItDown() {
     const text = homework.trim();
-    if ((!text && !file) || text.length > MAX_HOMEWORK_CHARS) return;
+    if ((!text && files.length === 0) || text.length > MAX_HOMEWORK_CHARS) return;
 
     if (!authSession) {
       setAuthModal({ mode: 'signup', notice: SIGNUP_NOTICE });
       return;
     }
 
-    if (!file && sourceHomework !== null && text === sourceHomework) {
+    if (sourceHomework !== null && text === sourceHomework && isSameFileList(files, sourceFiles)) {
       setNotice({ message: NO_CHANGES_NOTICE, id: Date.now() });
       return;
     }
@@ -78,22 +88,28 @@ function App() {
     setNotice(null);
     setView('loading');
 
+    let storedFiles: StoredFile[];
     try {
-      const attachment = file ? await readHomeworkFile(file) : null;
-      const promptText =
-        attachment?.kind === 'text' ? [text, attachment.text.trim()].filter(Boolean).join('\n\n') : text;
-      if (promptText.length > MAX_HOMEWORK_CHARS) {
-        setErrorMessage(TOO_LONG_FILE_ERROR);
-        setView('input');
-        return;
-      }
+      storedFiles = await Promise.all(files.map(readStoredFile));
+    } catch {
+      setErrorMessage(FILE_READ_ERROR_MESSAGE);
+      setView('input');
+      return;
+    }
 
-      const inlineFile = attachment?.kind === 'inline' ? attachment : undefined;
-      const breakdown = await breakDownHomework(promptText, inlineFile);
-      const saved = await createSession(text, breakdown);
+    const promptText = buildPromptText(text, storedFiles);
+    if (promptText.length > MAX_HOMEWORK_CHARS) {
+      setErrorMessage(TOO_LONG_FILE_ERROR);
+      setView('input');
+      return;
+    }
+
+    try {
+      const breakdown = await breakDownHomework(promptText, toInlineFiles(storedFiles));
+      const saved = await createSession(text, breakdown, storedFiles);
       setActiveSession(saved);
       setSourceHomework(null);
-      setFile(null);
+      setFiles([]);
       setStartIndex(0);
       setView('focus');
     } catch {
@@ -102,14 +118,14 @@ function App() {
     }
   }
 
-  function handleFileSelect(selected: File) {
-    const error = validateHomeworkFile(selected);
+  function handleFilesSelect(selected: File[]) {
+    const error = validateNewFiles(files, selected);
     if (error) {
       setErrorMessage(error);
       return;
     }
     setErrorMessage(null);
-    setFile(selected);
+    setFiles((current) => [...current, ...selected]);
   }
 
   async function handleResume(sessionId: string) {
@@ -134,8 +150,9 @@ function App() {
 
   function returnToInput() {
     setHomework('');
-    setFile(null);
+    setFiles([]);
     setSourceHomework(null);
+    setSourceFiles([]);
     setActiveSession(null);
     setStartIndex(0);
     setCompletedSteps(0);
@@ -147,9 +164,12 @@ function App() {
   function handleEditHomework() {
     if (!activeSession) return;
     const original = activeSession.homework_text;
+    const restored = activeSession.files.map(storedFileToFile);
     returnToInput();
     setHomework(original);
+    setFiles(restored);
     setSourceHomework(original);
+    setSourceFiles(restored);
   }
 
   function handleSessionSaved() {
@@ -191,12 +211,12 @@ function App() {
             />
             <InputView
               value={homework}
-              file={file}
+              files={files}
               errorMessage={errorMessage}
               notice={notice?.message ?? null}
               onChange={setHomework}
-              onFileSelect={handleFileSelect}
-              onFileRemove={() => setFile(null)}
+              onFilesSelect={handleFilesSelect}
+              onFileRemove={(index) => setFiles((current) => current.filter((_, i) => i !== index))}
               onSubmit={handleBreakItDown}
             />
             {authSession && <RecentSessions onResume={handleResume} />}

@@ -7,12 +7,13 @@ const corsHeaders = {
 };
 
 const MAX_CHARS = 5000;
-const MAX_INLINE_CHARS = Math.ceil((20 * 1024 * 1024 * 4) / 3) + 16;
+const MAX_FILES = 10;
+const MAX_TOTAL_INLINE_CHARS = Math.ceil((20 * 1024 * 1024 * 4) / 3) + 16;
 const ALLOWED_INLINE_MIME_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg']);
 const FILE_INSTRUCTION =
-  'If a file is attached, extract the homework content from it. If the text box also contains instructions, combine them.';
+  'If files are attached, extract the homework content from them. If the text box also contains instructions, combine them.';
 
-const SYSTEM_PROMPT = `You may receive an image or PDF document alongside text. If a document is provided, your first job is to read it carefully (extract text, read math problems, interpret diagrams). Use the extracted content from the document as the homework assignment and break it down into steps just like you would with pasted text.
+const SYSTEM_PROMPT = `You may receive one or more images or PDF documents alongside text. If documents are provided, your first job is to read them carefully (extract text, read math problems, interpret diagrams). Use the extracted content from the documents as the homework assignment and break it down into steps just like you would with pasted text.
 
 You are an elite educational psychologist and instructional designer. Your job is to take any homework assignment and break it into the most scientifically optimal, ADHD-friendly micro-steps. You must embed the actual homework content directly into the steps.
 
@@ -137,27 +138,35 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json();
     const homework = typeof body?.text === "string" ? body.text.trim() : "";
-    const file = body?.file ?? null;
+    const rawFiles: unknown = body?.files ?? [];
 
     if (homework.length > MAX_CHARS) {
       return jsonResponse({ error: "Homework text is too long" }, 400);
     }
 
-    let inlineFile: InlineFile | null = null;
-    if (file !== null) {
+    if (!Array.isArray(rawFiles) || rawFiles.length > MAX_FILES) {
+      return jsonResponse({ error: "Too many files" }, 400);
+    }
+
+    const inlineFiles: InlineFile[] = [];
+    let totalChars = 0;
+    for (const file of rawFiles) {
       const isValid =
-        typeof file.mimeType === "string" &&
+        typeof file?.mimeType === "string" &&
         ALLOWED_INLINE_MIME_TYPES.has(file.mimeType) &&
-        typeof file.data === "string" &&
-        file.data.length > 0 &&
-        file.data.length <= MAX_INLINE_CHARS;
+        typeof file?.data === "string" &&
+        file.data.length > 0;
       if (!isValid) {
         return jsonResponse({ error: "File is missing or unsupported" }, 400);
       }
-      inlineFile = { mimeType: file.mimeType, data: file.data };
+      totalChars += file.data.length;
+      if (totalChars > MAX_TOTAL_INLINE_CHARS) {
+        return jsonResponse({ error: "Files are too large" }, 400);
+      }
+      inlineFiles.push({ mimeType: file.mimeType, data: file.data });
     }
 
-    if (!homework && !inlineFile) {
+    if (!homework && inlineFiles.length === 0) {
       return jsonResponse({ error: "Homework text or file is required" }, 400);
     }
 
@@ -168,13 +177,13 @@ Deno.serve(async (req: Request) => {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const contents: GeminiContents = inlineFile
+    const contents: GeminiContents = inlineFiles.length > 0
       ? [
           {
             role: "user",
             parts: [
               { text: homework ? `${homework}\n\n${FILE_INSTRUCTION}` : FILE_INSTRUCTION },
-              { inlineData: inlineFile },
+              ...inlineFiles.map((inlineData) => ({ inlineData })),
             ],
           },
         ]

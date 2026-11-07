@@ -96,7 +96,7 @@ export function parseBreakdown(raw: string): Breakdown {
   };
 }
 
-export async function breakDownHomework(text: string, file?: InlineFile): Promise<Breakdown> {
+export async function breakDownHomework(text: string, files: InlineFile[]): Promise<Breakdown> {
   const response = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {
@@ -104,7 +104,7 @@ export async function breakDownHomework(text: string, file?: InlineFile): Promis
       apikey: ANON_KEY,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ text, file }),
+    body: JSON.stringify({ text, files }),
   });
 
   if (!response.ok) {
