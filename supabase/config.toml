@@ -3,3 +3,9 @@ verify_jwt = true
 
 [functions.explain-text]
 verify_jwt = true
+
+[functions.elevenlabs-tts]
+verify_jwt = true
+
+[functions.elevenlabs-token]
+verify_jwt = true

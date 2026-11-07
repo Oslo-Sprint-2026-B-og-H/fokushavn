@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Loader2, Square, Volume2 } from 'lucide-react';
 import StepTimer from '@/components/StepTimer';
 import StepBody from '@/components/StepBody';
 import HighlightExplainer from '@/components/HighlightExplainer';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useReadAloud } from '@/hooks/useReadAloud';
 import type { SavedStep } from '@/lib/sessions';
 import { stepDurationSeconds } from '@/lib/stepTimer';
 
@@ -30,6 +31,7 @@ function StepPanel({
 }: StepPanelProps) {
   const { t } = useLanguage();
   const [revealedHints, setRevealedHints] = useState(0);
+  const readAloud = useReadAloud(step.text);
   const isBreak = step.type === 'break';
   const hints = step.hints;
   const hasMoreHints = revealedHints < hints.length;
@@ -57,6 +59,30 @@ function StepPanel({
         <HighlightExplainer>
           <StepBody text={step.text} />
         </HighlightExplainer>
+
+        <div className="flex flex-col items-start gap-2">
+          <button
+            type="button"
+            onClick={() => void readAloud.toggle()}
+            disabled={readAloud.status === 'loading'}
+            aria-busy={readAloud.status === 'loading'}
+            className="inline-flex items-center gap-2 rounded-full border border-ink/15 bg-white px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/5 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30 disabled:cursor-wait disabled:opacity-60"
+          >
+            {readAloud.status === 'loading' ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : readAloud.status === 'playing' ? (
+              <Square className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Volume2 className="h-4 w-4" aria-hidden="true" />
+            )}
+            {readAloud.status === 'playing' ? t('stopReading') : t('readAloud')}
+          </button>
+          {readAloud.status === 'error' ? (
+            <p role="alert" className="text-sm font-medium text-red-600">
+              {t('readAloudError')}
+            </p>
+          ) : null}
+        </div>
 
         <div className="flex w-full flex-col gap-3">
           {hints.slice(0, revealedHints).map((hint, hintIndex) => (

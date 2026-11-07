@@ -3,6 +3,7 @@ import FocusSidebar from '@/components/FocusSidebar';
 import LeaveConfirmDialog from '@/components/LeaveConfirmDialog';
 import StepPanel from '@/components/StepPanel';
 import VocabularyHelp from '@/components/VocabularyHelp';
+import VoiceAgent from '@/components/VoiceAgent';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { isPrimaryShortcut } from '@/lib/shortcuts';
@@ -250,6 +251,7 @@ function FocusSession({
       </div>
 
       {confirmOpen && <LeaveConfirmDialog onCancel={() => setConfirmOpen(false)} onLeave={onLeave} />}
+      <VoiceAgent />
     </div>
   );
 }
