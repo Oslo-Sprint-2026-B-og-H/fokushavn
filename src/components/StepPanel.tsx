@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check } from 'lucide-react';
 import StepTimer from '@/components/StepTimer';
 import StepBody from '@/components/StepBody';
+import HighlightExplainer from '@/components/HighlightExplainer';
 import type { SavedStep } from '@/lib/sessions';
 import { stepDurationSeconds } from '@/lib/stepTimer';
 
@@ -51,7 +52,9 @@ function StepPanel({
       </div>
 
       <div className="flex flex-1 flex-col justify-center gap-6 py-10">
-        <StepBody text={step.text} />
+        <HighlightExplainer>
+          <StepBody text={step.text} />
+        </HighlightExplainer>
 
         <div className="flex w-full flex-col gap-3">
           {hints.slice(0, revealedHints).map((hint, hintIndex) => (

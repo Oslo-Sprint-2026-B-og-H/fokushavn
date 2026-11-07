@@ -1,2 +1,5 @@
 [functions.breakdown-homework]
 verify_jwt = true
+
+[functions.explain-text]
+verify_jwt = true
