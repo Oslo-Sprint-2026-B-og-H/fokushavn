@@ -123,10 +123,10 @@ function FocusSession({
     (async () => {
       try {
         const translated = await translateSessionContent(content, language);
-        await saveTranslatedSession(session.id, translated);
         if (!active) return;
         setContent(translated);
         setTranslating(false);
+        saveTranslatedSession(session.id, translated).catch(() => setTranslateFailed(true));
       } catch {
         if (!active) return;
         setTranslating(false);
@@ -244,8 +244,6 @@ function FocusSession({
     return () => window.removeEventListener('keydown', onKeyDown);
   });
 
-  if (translating) return <LoadingView />;
-
   return (
     <div className="flex flex-col gap-6 md:flex-row md:items-stretch">
       <FocusSidebar
@@ -273,7 +271,8 @@ function FocusSession({
             {t('genericError')}
           </p>
         )}
-        {!isFinishing && (
+        {!isFinishing && translating && <LoadingView />}
+        {!isFinishing && !translating && (
           <div
             className={`grid gap-6 ${hasVocabulary ? 'lg:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] lg:items-start' : ''}`}
           >
