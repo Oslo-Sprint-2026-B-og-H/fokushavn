@@ -25,7 +25,7 @@ export type RecentSession = {
 
 export type StepStatus = 'completed' | 'skipped';
 
-const RECENT_LIMIT = 5;
+const RECENT_LIMIT = 50;
 const STEP_COLUMNS = 'id, step_number, text, est_minutes, type, completed, skipped, hints';
 
 type StepRow = Omit<SavedStep, 'hints'> & { hints?: unknown };
