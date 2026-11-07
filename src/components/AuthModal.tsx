@@ -1,6 +1,9 @@
 import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
 import { X } from 'lucide-react';
 import { signIn, signUp } from '@/lib/auth';
+import { useLanguage } from '@/hooks/useLanguage';
+
+import type { TranslationKey } from '@/lib/translations';
 
 export type AuthMode = 'login' | 'signup';
 
@@ -11,22 +14,21 @@ type AuthModalProps = {
   onSuccess: () => void;
 };
 
-const AUTH_ERROR = "That didn't work — check your email and password.";
-
-const COPY: Record<AuthMode, { title: string; switchPrompt: string; switchLabel: string }> = {
+const COPY: Record<AuthMode, { title: TranslationKey; switchPrompt: TranslationKey; switchLabel: TranslationKey }> = {
   login: {
-    title: 'Log in',
-    switchPrompt: "Don't have an account?",
-    switchLabel: 'Sign up',
+    title: 'logIn',
+    switchPrompt: 'noAccountPrompt',
+    switchLabel: 'signUp',
   },
   signup: {
-    title: 'Sign up',
-    switchPrompt: 'Already have an account?',
-    switchLabel: 'Log in',
+    title: 'signUp',
+    switchPrompt: 'haveAccountPrompt',
+    switchLabel: 'logIn',
   },
 };
 
 function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) {
+  const { t } = useLanguage();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -66,7 +68,7 @@ function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) 
       else await signUp(fullName.trim(), trimmedEmail, password);
       onSuccess();
     } catch {
-      setErrorMessage(AUTH_ERROR);
+      setErrorMessage(t('authError'));
     } finally {
       setIsPending(false);
     }
@@ -86,7 +88,7 @@ function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) 
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t('close')}
           className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-ink/5 hover:text-ink focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30"
         >
           <X className="h-5 w-5" aria-hidden="true" />
@@ -94,13 +96,12 @@ function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) 
 
         {notice ? <p className="pr-10 text-sm leading-[1.5] text-ink/60">{notice}</p> : null}
         <h2 id="auth-modal-title" className="pr-10 text-2xl font-bold leading-[1.2] text-ink">
-          {copy.title}
-        </h2>
+          {t(copy.title)}
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           {mode === 'signup' ? (
             <label className="flex flex-col gap-2 text-sm font-medium text-ink">
-              Name
+              {t('nameLabel')}
               <input
                 type="text"
                 name="name"
@@ -114,7 +115,7 @@ function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) 
             </label>
           ) : null}
           <label className="flex flex-col gap-2 text-sm font-medium text-ink">
-            Email
+            {t('emailLabel')}
             <input
               type="email"
               name="email"
@@ -127,7 +128,7 @@ function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) 
             />
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium text-ink">
-            Password
+            {t('passwordLabel')}
             <input
               type="password"
               name="password"
@@ -145,8 +146,7 @@ function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) 
             disabled={isPending}
             className="mt-2 w-full rounded-xl bg-accent px-6 py-3 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {copy.title}
-          </button>
+          {t(copy.title)}
 
           {errorMessage ? (
             <p role="alert" className="text-sm font-medium text-red-600">
@@ -156,14 +156,14 @@ function AuthModal({ initialMode, notice, onClose, onSuccess }: AuthModalProps) 
         </form>
 
         <p className="mt-6 text-center text-sm text-ink/60">
-          {copy.switchPrompt}{' '}
+          {t(copy.switchPrompt)}{' '}
           <button
             type="button"
             onClick={switchMode}
             disabled={isPending}
             className="font-semibold text-accent transition-opacity hover:opacity-80 focus:outline-none focus-visible:underline disabled:opacity-40"
           >
-            {copy.switchLabel}
+            {t(copy.switchLabel)}
           </button>
         </p>
       </div>

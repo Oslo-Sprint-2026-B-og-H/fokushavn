@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useLanguage } from '@/hooks/useLanguage';
 
 type SaveToastProps = {
   onDone: () => void;
@@ -7,6 +8,7 @@ type SaveToastProps = {
 const TOAST_MS = 2000;
 
 function SaveToast({ onDone }: SaveToastProps) {
+  const { t } = useLanguage();
   useEffect(() => {
     const id = window.setTimeout(onDone, TOAST_MS);
     return () => window.clearTimeout(id);

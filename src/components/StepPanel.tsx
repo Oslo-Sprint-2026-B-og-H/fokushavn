@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import StepTimer from '@/components/StepTimer';
 import StepBody from '@/components/StepBody';
 import HighlightExplainer from '@/components/HighlightExplainer';
+import { useLanguage } from '@/hooks/useLanguage';
 import type { SavedStep } from '@/lib/sessions';
 import { stepDurationSeconds } from '@/lib/stepTimer';
 
@@ -27,25 +28,25 @@ function StepPanel({
   onPrimary,
   onSkip,
 }: StepPanelProps) {
+  const { t } = useLanguage();
   const [revealedHints, setRevealedHints] = useState(0);
   const isBreak = step.type === 'break';
   const hints = step.hints;
   const hasMoreHints = revealedHints < hints.length;
 
-  let primaryLabel = isBreak ? 'Finish Break' : 'Mark as Complete';
-  if (isFlashing) primaryLabel = 'Completed';
+  let primaryLabel = isBreak ? t('finishBreak') : t('markComplete');
+  if (isFlashing) primaryLabel = t('completed');
 
   return (
     <section className="flex min-h-[460px] flex-col rounded-2xl border border-ink/10 bg-white p-6 md:p-8">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col items-start gap-3">
           <p className="text-sm font-medium text-ink/60">
-            Step {stepNumber} of {total}
+            {t('stepOf', { step: stepNumber, total })}
           </p>
           {isBreak ? (
             <span className="rounded-full bg-[#F3F3F3] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink/70">
-              Break
-            </span>
+              {t('stepBreak')}
           ) : null}
         </div>
         <StepTimer durationSeconds={stepDurationSeconds(step.est_minutes)} running={timerRunning} />
@@ -71,7 +72,7 @@ function StepPanel({
               onClick={() => setRevealedHints((count) => count + 1)}
               className="text-sm font-medium text-ink/60 underline-offset-4 transition-colors hover:text-ink hover:underline focus:outline-none focus-visible:underline"
             >
-              Show Hint {revealedHints + 1}
+              {t('showHint')} {revealedHints + 1}
             </button>
           ) : null}
         </div>
@@ -83,7 +84,7 @@ function StepPanel({
             role="status"
             className="animate-fade-in-quick rounded-full bg-ink/5 px-3 py-1 text-sm text-ink/70"
           >
-            Step skipped
+            {t('stepSkipped')}
           </p>
         ) : null}
       </div>
@@ -104,7 +105,7 @@ function StepPanel({
           onClick={onSkip}
           className="text-sm text-ink/60 underline-offset-4 transition-colors hover:text-ink hover:underline focus:outline-none focus-visible:underline"
         >
-          Skip this step
+          {t('skipStep')}
         </button>
       </div>
     </section>

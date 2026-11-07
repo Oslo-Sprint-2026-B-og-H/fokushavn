@@ -1,12 +1,9 @@
+import type { Translate } from '@/lib/translations';
+
 export const MAX_FILES = 10;
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 export const FILE_INPUT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.txt';
-export const FILE_TOO_LARGE_MESSAGE = 'File is too large. Please upload a file under 20MB.';
-export const TOTAL_TOO_LARGE_MESSAGE = 'Your files are too large together. Please keep them under 20MB in total.';
-export const UNSUPPORTED_FILE_MESSAGE = 'Unsupported file type. Please upload a PDF, image, or text file.';
-export const TOO_MANY_FILES_MESSAGE = `Maximum ${MAX_FILES} files allowed.`;
-export const FILE_READ_ERROR_MESSAGE = "One of your files couldn't be read. Remove it and try again.";
 
 export type InlineFile = {
   mimeType: string;
@@ -34,14 +31,14 @@ export function mimeTypeFor(fileName: string): string | null {
   return MIME_BY_EXTENSION[extension] ?? null;
 }
 
-export function validateNewFiles(current: File[], incoming: File[]): string | null {
-  if (current.length + incoming.length > MAX_FILES) return TOO_MANY_FILES_MESSAGE;
+export function validateNewFiles(current: File[], incoming: File[], t: Translate): string | null {
+  if (current.length + incoming.length > MAX_FILES) return t('tooManyFiles', { max: MAX_FILES });
   for (const file of incoming) {
-    if (file.size > MAX_FILE_BYTES) return FILE_TOO_LARGE_MESSAGE;
-    if (!mimeTypeFor(file.name)) return UNSUPPORTED_FILE_MESSAGE;
+    if (file.size > MAX_FILE_BYTES) return t('fileTooLarge');
+    if (!mimeTypeFor(file.name)) return t('unsupportedFile');
   }
   const totalBytes = [...current, ...incoming].reduce((sum, file) => sum + file.size, 0);
-  if (totalBytes > MAX_TOTAL_BYTES) return TOTAL_TOO_LARGE_MESSAGE;
+  if (totalBytes > MAX_TOTAL_BYTES) return t('totalTooLarge');
   return null;
 }
 
@@ -66,7 +63,7 @@ function readAsBase64(file: File): Promise<string> {
 
 export async function readStoredFile(file: File): Promise<StoredFile> {
   const mimeType = mimeTypeFor(file.name);
-  if (!mimeType) throw new Error(UNSUPPORTED_FILE_MESSAGE);
+  if (!mimeType) throw new Error('Unsupported file type');
   return { name: file.name, mimeType, base64: await readAsBase64(file) };
 }
 

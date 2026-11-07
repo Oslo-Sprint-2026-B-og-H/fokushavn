@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Sparkles, X } from 'lucide-react';
+import { useLanguage } from '@/hooks/useLanguage';
 import { explainText } from '@/lib/explain';
 
 type ExplainStatus = 'button' | 'loading' | 'ready' | 'error';

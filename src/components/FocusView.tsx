@@ -3,6 +3,7 @@ import FocusSidebar from '@/components/FocusSidebar';
 import LeaveConfirmDialog from '@/components/LeaveConfirmDialog';
 import StepPanel from '@/components/StepPanel';
 import VocabularyHelp from '@/components/VocabularyHelp';
+import { useLanguage } from '@/hooks/useLanguage';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { isPrimaryShortcut } from '@/lib/shortcuts';
 import { saveSessionProgress, type SavedSession, type SavedStep, type StepStatus } from '@/lib/sessions';
@@ -26,17 +27,18 @@ const FINISH_HOLD_MS = 700;
 const TOAST_MS = 2000;
 
 function EmptySteps({ onBack }: { onBack: () => void }) {
+  const { t } = useLanguage();
   return (
     <div className="animate-fade-in">
       <p className="text-lg leading-[1.5] text-ink">
-        No steps found — try again with the original homework.
+        {t('noSteps')}
       </p>
       <button
         type="button"
         onClick={onBack}
         className="mt-6 text-sm font-medium text-accent transition-opacity hover:opacity-80 focus:outline-none focus-visible:underline"
       >
-        ← Back
+        {t('back')}
       </button>
     </div>
   );
@@ -64,6 +66,7 @@ function FocusSession({
   onSaved,
   onEditHomework,
 }: FocusViewProps) {
+  const { t } = useLanguage();
   const { steps, session_title: title } = session;
   const total = steps.length;
 
@@ -218,7 +221,7 @@ function FocusSession({
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         {saveFailed && (
           <p role="alert" className="text-sm font-medium text-red-600">
-            Couldn't save your progress — check your connection.
+            {t('saveFailed')}
           </p>
         )}
         {!isFinishing && (

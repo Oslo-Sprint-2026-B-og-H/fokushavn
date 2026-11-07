@@ -7,13 +7,14 @@ import LandingHeader from '@/components/LandingHeader';
 import LoadingView from '@/components/LoadingView';
 import RecentSessions from '@/components/RecentSessions';
 import SaveToast from '@/components/SaveToast';
+import LanguageToggle from '@/components/LanguageToggle';
 import { useAuthSession } from '@/hooks/useAuthSession';
+import { useLanguage } from '@/hooks/useLanguage';
 import { useProfileName } from '@/hooks/useProfileName';
 import { signOut } from '@/lib/auth';
 import { breakDownHomework, MAX_HOMEWORK_CHARS } from '@/lib/breakdown';
 import {
   buildPromptText,
-  FILE_READ_ERROR_MESSAGE,
   isSameFileList,
   readStoredFile,
   storedFileToFile,
@@ -30,11 +31,6 @@ import {
 
 type View = 'input' | 'loading' | 'focus' | 'complete';
 
-const GENERIC_ERROR = 'Something went wrong — try again.';
-const TOO_LONG_FILE_ERROR = "That file has too much text. Try a shorter file or paste just the main assignment.";
-const LOGOUT_ERROR = "Couldn't log out — try again.";
-const SIGNUP_NOTICE = 'Sign up to save your steps and pick up where you left off.';
-const NO_CHANGES_NOTICE = 'No changes made to the homework.';
 const NOTICE_MS = 3000;
 const SAVE_NAVIGATE_MS = 500;
 
@@ -42,6 +38,7 @@ type AuthModalState = { mode: AuthMode; notice?: string };
 type Notice = { message: string; id: number };
 
 function App() {
+  const { language, t } = useLanguage();
   const { session: authSession, isReady } = useAuthSession();
   const profileName = useProfileName(authSession?.user.id ?? null);
   const metadataName = authSession?.user.user_metadata?.full_name;
@@ -75,12 +72,12 @@ function App() {
     if ((!text && files.length === 0) || text.length > MAX_HOMEWORK_CHARS) return;
 
     if (!authSession) {
-      setAuthModal({ mode: 'signup', notice: SIGNUP_NOTICE });
+      setAuthModal({ mode: 'signup', notice: t('signupNotice') });
       return;
     }
 
     if (sourceHomework !== null && text === sourceHomework && isSameFileList(files, sourceFiles)) {
-      setNotice({ message: NO_CHANGES_NOTICE, id: Date.now() });
+      setNotice({ message: t('noChanges'), id: Date.now() });
       return;
     }
 
@@ -92,20 +89,20 @@ function App() {
     try {
       storedFiles = await Promise.all(files.map(readStoredFile));
     } catch {
-      setErrorMessage(FILE_READ_ERROR_MESSAGE);
+      setErrorMessage(t('fileReadError'));
       setView('input');
       return;
     }
 
     const promptText = buildPromptText(text, storedFiles);
     if (promptText.length > MAX_HOMEWORK_CHARS) {
-      setErrorMessage(TOO_LONG_FILE_ERROR);
+      setErrorMessage(t('tooLongFile'));
       setView('input');
       return;
     }
 
     try {
-      const breakdown = await breakDownHomework(promptText, toInlineFiles(storedFiles));
+      const breakdown = await breakDownHomework(promptText, toInlineFiles(storedFiles), language);
       const saved = await createSession(text, breakdown, storedFiles);
       setActiveSession(saved);
       setSourceHomework(null);
@@ -113,13 +110,13 @@ function App() {
       setStartIndex(0);
       setView('focus');
     } catch {
-      setErrorMessage(GENERIC_ERROR);
+      setErrorMessage(t('genericError'));
       setView('input');
     }
   }
 
   function handleFilesSelect(selected: File[]) {
-    const error = validateNewFiles(files, selected);
+    const error = validateNewFiles(files, selected, t);
     if (error) {
       setErrorMessage(error);
       return;
@@ -181,7 +178,7 @@ function App() {
     try {
       await signOut();
     } catch {
-      setErrorMessage(LOGOUT_ERROR);
+      setErrorMessage(t('logoutError'));
       return;
     }
     returnToInput();
@@ -191,15 +188,18 @@ function App() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-canvas px-6 py-16 text-ink">
-      {authSession && view !== 'input' && view !== 'focus' && (
-        <button
-          type="button"
-          onClick={() => void handleLogout()}
-          className="absolute right-6 top-6 text-sm font-medium text-accent transition-opacity hover:opacity-80 focus:outline-none focus-visible:underline"
-        >
-          Log out
-        </button>
-      )}
+      <div className="fixed right-6 top-6 z-[60] flex items-center gap-4">
+        {authSession && view !== 'input' && view !== 'focus' && (
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="text-sm font-semibold text-accent transition-opacity hover:opacity-80 focus:outline-none focus-visible:underline"
+          >
+            {t('logOut')}
+          </button>
+        )}
+        <LanguageToggle />
+      </div>
       <div className={`w-full ${view === 'focus' ? '' : 'max-w-[640px]'}`}>
         {view === 'input' && (
           <>

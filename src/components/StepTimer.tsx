@@ -1,5 +1,6 @@
 import { useEffect, type CSSProperties } from 'react';
 import { useStepCountdown } from '@/hooks/useStepCountdown';
+import { useLanguage } from '@/hooks/useLanguage';
 import { formatCountdown, LOW_TIME_RATIO } from '@/lib/stepTimer';
 
 type StepTimerProps = {
@@ -9,19 +10,20 @@ type StepTimerProps = {
 
 const FILL_BLUE = '#4A90D9';
 const FILL_AMBER = '#E8A33D';
-const TIME_UP_TITLE = "⏰ Time's up — Stepwise";
 
 function StepTimer({ durationSeconds, running }: StepTimerProps) {
+  const { t } = useLanguage();
   const remaining = useStepCountdown(durationSeconds, running);
   const isDone = remaining === 0;
   const isLow = remaining <= durationSeconds * LOW_TIME_RATIO;
+  const timeUpTitle = t('timeUpTitle');
 
   useEffect(() => {
     if (!isDone) return;
 
     const originalTitle = document.title;
     function syncTitle() {
-      document.title = document.hidden ? TIME_UP_TITLE : originalTitle;
+      document.title = document.hidden ? timeUpTitle : originalTitle;
     }
 
     syncTitle();
@@ -30,7 +32,7 @@ function StepTimer({ durationSeconds, running }: StepTimerProps) {
       document.removeEventListener('visibilitychange', syncTitle);
       document.title = originalTitle;
     };
-  }, [isDone]);
+  }, [isDone, timeUpTitle]);
 
   const diskStyle = {
     '--timer-angle': `${(remaining / durationSeconds) * 360}deg`,
@@ -48,7 +50,7 @@ function StepTimer({ durationSeconds, running }: StepTimerProps) {
         </span>
       </div>
       <p aria-live="polite" className="absolute right-0 top-full mt-2 w-56 text-right text-sm text-ink/70">
-        {isDone ? "Time's up — finish this step or take a break." : null}
+        {isDone ? t('timeUp') : null}
       </p>
     </div>
   );

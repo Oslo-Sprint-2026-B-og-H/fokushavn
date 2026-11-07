@@ -1,3 +1,5 @@
+import { useLanguage } from '@/hooks/useLanguage';
+
 type LandingHeaderProps = {
   userName: string | null;
   onLogIn: () => void;
@@ -6,6 +8,7 @@ type LandingHeaderProps = {
 };
 
 function LandingHeader({ userName, onLogIn, onSignUp, onLogOut }: LandingHeaderProps) {
+  const { t } = useLanguage();
   return (
     <header className="mb-10">
       <div className="flex items-center justify-between gap-4">
@@ -20,7 +23,7 @@ function LandingHeader({ userName, onLogIn, onSignUp, onLogOut }: LandingHeaderP
               onClick={onLogOut}
               className="shrink-0 text-sm font-semibold text-accent transition-opacity hover:opacity-80 focus:outline-none focus-visible:underline"
             >
-              Log out
+              {t('logOut')}
             </button>
           </div>
         ) : (
@@ -30,19 +33,19 @@ function LandingHeader({ userName, onLogIn, onSignUp, onLogOut }: LandingHeaderP
               onClick={onLogIn}
               className="rounded-lg border border-ink/15 bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink/5 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30"
             >
-              Log in
+              {t('logIn')}
             </button>
             <button
               type="button"
               onClick={onSignUp}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30"
             >
-              Sign up
+              {t('signUp')}
             </button>
           </div>
         )}
       </div>
-      <p className="mt-3 text-lg leading-[1.5] text-ink/70">Break homework into small steps.</p>
+      <p className="mt-3 text-lg leading-[1.5] text-ink/70">{t('tagline')}</p>
     </header>
   );
 }

@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent, type ClipboardEvent, type DragEvent, type FormEvent } from 'react';
 import { FileText, Upload, X } from 'lucide-react';
+import { useLanguage } from '@/hooks/useLanguage';
 import { MAX_HOMEWORK_CHARS } from '@/lib/breakdown';
 import { FILE_INPUT_ACCEPT, formatFileSize } from '@/lib/homeworkFile';
 
@@ -24,6 +25,7 @@ function InputView({
   onFileRemove,
   onSubmit,
 }: InputViewProps) {
+  const { t } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const length = value.length;
@@ -68,15 +70,15 @@ function InputView({
           <textarea
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            placeholder="Paste your homework here."
-            aria-label="Homework text"
+            placeholder={t('homeworkPlaceholder')}
+            aria-label={t('homeworkPlaceholder')}
             aria-invalid={isTooLong}
             className="min-h-[240px] w-full resize-y rounded-2xl border border-ink/15 bg-white p-6 text-lg leading-[1.5] text-ink placeholder:text-ink/40 transition-colors focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/15"
           />
           <div className="flex items-center justify-between gap-4 px-1 text-sm">
             <p className={isTooLong ? 'text-red-600' : 'text-ink/60'}>
               {isTooLong
-                ? "That's a lot! Try pasting just the main assignment for now."
+                ? t('tooLongInput')
                 : null}
             </p>
             <span
@@ -89,7 +91,7 @@ function InputView({
 
         <div className="flex flex-col gap-3">
           {files.length > 0 && (
-            <ul className="flex flex-wrap gap-2" aria-label="Attached files">
+            <ul className="flex flex-wrap gap-2" aria-label={t('attachedFiles')}>
               {files.map((file, index) => (
                 <li
                   key={`${file.name}-${index}`}
@@ -101,7 +103,7 @@ function InputView({
                   <button
                     type="button"
                     onClick={() => onFileRemove(index)}
-                    aria-label={`Remove ${file.name}`}
+                    aria-label={t('removeFile', { name: file.name })}
                     className="rounded-md p-1 text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30"
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
@@ -122,7 +124,7 @@ function InputView({
             <div className="flex items-center gap-3">
               <Upload className="h-5 w-5 shrink-0 text-ink/60" aria-hidden="true" />
               <p className="text-sm leading-[1.5] text-ink/70">
-                Drop files here, paste an image, or
+                {t('dropHint')}
               </p>
             </div>
             <button
@@ -130,7 +132,7 @@ function InputView({
               onClick={() => inputRef.current?.click()}
               className="shrink-0 rounded-lg border border-ink/15 bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink/5 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30"
             >
-              Upload files
+              {t('uploadFiles')}
             </button>
             <input
               ref={inputRef}
@@ -139,7 +141,7 @@ function InputView({
               accept={FILE_INPUT_ACCEPT}
               onChange={handleFileInput}
               className="hidden"
-              aria-label="Upload homework files"
+              aria-label={t('uploadLabel')}
             />
           </div>
 
@@ -148,7 +150,7 @@ function InputView({
             disabled={isDisabled}
             className="self-start rounded-xl bg-accent px-6 py-3 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
           >
-            Break it down
+            {t('breakItDown')}
           </button>
           {errorMessage ? (
             <p role="alert" className="text-sm font-medium text-red-600">

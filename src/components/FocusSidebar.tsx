@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BookOpen, Check, CircleHelp } from 'lucide-react';
 import ProgressBar from '@/components/ProgressBar';
+import { useLanguage } from '@/hooks/useLanguage';
 import type { SavedStep, StepStatus } from '@/lib/sessions';
 import { classifyStep, parseStepContent } from '@/lib/stepContent';
 
@@ -31,6 +32,7 @@ function FocusSidebar({
   onEditHomework,
   saving,
 }: FocusSidebarProps) {
+  const { t } = useLanguage();
   const [stepsOpen, setStepsOpen] = useState(false);
   const roundedPercent = Math.round(percent);
 
@@ -38,13 +40,13 @@ function FocusSidebar({
     <aside className="flex flex-col rounded-2xl border border-ink/10 bg-white md:w-[300px] md:shrink-0">
       <div className="flex flex-col gap-5 p-6">
         <div>
-          <h2 className="text-xl font-bold leading-[1.2] text-ink">Your Homework</h2>
+          <h2 className="text-xl font-bold leading-[1.2] text-ink">{t('yourHomework')}</h2>
           <p className="mt-1 break-words text-sm leading-[1.5] text-ink/60">{title}</p>
         </div>
 
         <div className="flex flex-col gap-2">
           <ProgressBar percent={percent} tone="success" thick />
-          <p className="text-sm font-bold tabular-nums text-[#2E8B57]">{roundedPercent}% Complete</p>
+          <p className="text-sm font-bold tabular-nums text-[#2E8B57]">{t('percentComplete', { percent: roundedPercent })}</p>
         </div>
 
         <button
@@ -53,7 +55,7 @@ function FocusSidebar({
           aria-expanded={stepsOpen}
           className="flex items-center justify-between text-sm font-medium text-ink/70 transition-colors hover:text-ink focus:outline-none focus-visible:underline md:hidden"
         >
-          {stepsOpen ? 'Hide all steps' : `Show all steps (${steps.length})`}
+          {stepsOpen ? t('hideAllSteps') : t('showAllSteps', { count: steps.length })}
           <span aria-hidden="true">{stepsOpen ? '−' : '+'}</span>
         </button>
       </div>
@@ -83,7 +85,7 @@ function FocusSidebar({
               >
                 {isBreak ? (
                   <span className="shrink-0 rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink/60">
-                    Break
+                    {t('stepBreak')}
                   </span>
                 ) : (
                   <span className="flex w-12 shrink-0 items-center gap-1.5 text-sm tabular-nums text-ink/60">
@@ -91,13 +93,13 @@ function FocusSidebar({
                     {kind === 'reading' ? (
                       <>
                         <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span className="sr-only">Reading</span>
+                        <span className="sr-only">{t('reading')}</span>
                       </>
                     ) : null}
                     {kind === 'question' ? (
                       <>
                         <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span className="sr-only">Question</span>
+                        <span className="sr-only">{t('question')}</span>
                       </>
                     ) : null}
                   </span>
@@ -114,7 +116,7 @@ function FocusSidebar({
               <button
                 type="button"
                 onClick={() => onCheck(step.id)}
-                aria-label={isCompleted ? `Unmark "${step.text}"` : `Mark "${step.text}" complete`}
+                aria-label={isCompleted ? t('unmarkStep', { text: step.text }) : t('markStepComplete', { text: step.text })}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30"
               >
                 {isCompleted ? (
@@ -141,7 +143,7 @@ function FocusSidebar({
           disabled={saving}
           className="w-full rounded-xl bg-accent px-4 py-3 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? 'Saving…' : 'Save Session'}
+          {saving ? t('saving') : t('saveSession')}
         </button>
         <button
           type="button"
@@ -149,7 +151,7 @@ function FocusSidebar({
           disabled={saving}
           className="w-full rounded-xl border border-ink/15 bg-white px-4 py-3 text-base font-semibold text-ink transition-colors hover:bg-ink/5 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Edit Homework
+          {t('editHomework')}
         </button>
       </div>
     </aside>
