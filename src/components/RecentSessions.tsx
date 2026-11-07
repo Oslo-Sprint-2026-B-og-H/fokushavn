@@ -1,0 +1,87 @@
+import { useEffect, useState } from 'react';
+import { formatRelativeDate } from '@/lib/relativeDate';
+import { listRecentSessions, type RecentSession } from '@/lib/sessions';
+
+type RecentSessionsProps = {
+  onResume: (sessionId: string) => Promise<void>;
+};
+
+function RecentSessions({ onResume }: RecentSessionsProps) {
+  const [sessions, setSessions] = useState<RecentSession[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [openFailed, setOpenFailed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    listRecentSessions().then(
+      (rows) => {
+        if (active) setSessions(rows);
+      },
+      () => {
+        if (active) setLoadFailed(true);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleResume(sessionId: string) {
+    setOpeningId(sessionId);
+    setOpenFailed(false);
+    try {
+      await onResume(sessionId);
+    } catch {
+      setOpenFailed(true);
+    } finally {
+      setOpeningId(null);
+    }
+  }
+
+  let body;
+  if (loadFailed) {
+    body = <p className="mt-4 text-sm text-ink/70">Couldn't load your recent sessions.</p>;
+  } else if (sessions === null) {
+    body = <p className="mt-4 text-sm text-ink/60">Loading your sessions…</p>;
+  } else if (sessions.length === 0) {
+    body = (
+      <p className="mt-4 text-sm text-ink/60">No sessions yet — paste your homework above to get started.</p>
+    );
+  } else {
+    body = (
+      <ul className="mt-4 divide-y divide-ink/10 rounded-xl border border-ink/10 bg-white">
+        {sessions.map((session) => (
+          <li key={session.id} className="flex items-center justify-between gap-4 px-5 py-4">
+            <div className="min-w-0">
+              <p className="break-words text-base font-medium text-ink">{session.session_title}</p>
+              <p className="mt-1 text-sm text-ink/60">{formatRelativeDate(session.created_at)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleResume(session.id)}
+              disabled={openingId !== null}
+              className="shrink-0 text-sm font-semibold text-accent transition-opacity hover:opacity-80 focus:outline-none focus-visible:underline disabled:opacity-40"
+            >
+              {openingId === session.id ? 'Opening…' : 'Resume'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <section className="mt-12">
+      <h2 className="text-lg font-semibold text-ink">Recent sessions</h2>
+      {body}
+      {openFailed ? (
+        <p role="alert" className="mt-3 text-sm font-medium text-red-600">
+          Couldn't open that session — try again.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+export default RecentSessions;

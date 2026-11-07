@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply bg-canvas text-ink antialiased;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+}
+
+@property --timer-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 360deg;
+}
+
+@property --timer-fill {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #4a90d9;
+}
+
+.step-timer-disk {
+  background: conic-gradient(var(--timer-fill) var(--timer-angle), #ececec var(--timer-angle));
+  transition:
+    --timer-angle 1s linear,
+    --timer-fill 400ms ease;
+}
