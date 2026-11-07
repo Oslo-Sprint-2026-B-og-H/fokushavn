@@ -180,3 +180,66 @@ export async function saveSessionProgress(
   );
   if (results.some(({ error }) => error)) throw new Error('Could not save progress');
 }
+
+export type TranslatableContent = Pick<SavedSession, 'session_title' | 'vocabulary' | 'steps'>;
+
+const TRANSLATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-session`;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export async function translateSessionContent(
+  content: TranslatableContent,
+  language: string,
+): Promise<TranslatableContent> {
+  const response = await fetch(TRANSLATE_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${ANON_KEY}`,
+      apikey: ANON_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      session_title: content.session_title,
+      vocabulary: content.vocabulary.map(({ word, definition }) => ({ word, definition })),
+      steps: content.steps.map(({ text, hints }) => ({ text, hints })),
+      language,
+    }),
+  });
+
+  if (!response.ok) throw new Error(`Translation failed (${response.status})`);
+
+  const payload: unknown = await response.json();
+  if (
+    !isRecord(payload) ||
+    typeof payload.session_title !== 'string' ||
+    !Array.isArray(payload.steps) ||
+    !Array.isArray(payload.vocabulary) ||
+    payload.steps.length !== content.steps.length
+  ) {
+    throw new Error('Unexpected translation response');
+  }
+
+  return {
+    session_title: payload.session_title,
+    vocabulary: parseVocabulary(payload.vocabulary),
+    steps: content.steps.map((step, index) => {
+      const translated = payload.steps as unknown[];
+      const item = translated[index];
+      if (!isRecord(item) || typeof item.text !== 'string') throw new Error('Unexpected translation response');
+      return { ...step, text: item.text, hints: parseHints(item.hints) };
+    }),
+  };
+}
+
+export async function saveTranslatedSession(sessionId: string, content: TranslatableContent): Promise<void> {
+  const stepResults = await Promise.all(
+    content.steps.map((step) =>
+      supabase.from('steps').update({ text: step.text, hints: step.hints }).eq('id', step.id),
+    ),
+  );
+  const { error: sessionError } = await supabase
+    .from('sessions')
+    .update({ session_title: content.session_title, vocabulary: content.vocabulary })
+    .eq('id', sessionId);
+
+  if (sessionError || stepResults.some(({ error }) => error)) throw new Error('Could not save translation');
+}
