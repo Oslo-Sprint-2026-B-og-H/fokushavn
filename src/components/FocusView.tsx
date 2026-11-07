@@ -140,7 +140,16 @@ function FocusSession({
 
   function handleSidebarCheck(stepId: string) {
     if (phase !== 'idle') return;
-    markComplete(stepId);
+    if (statuses[stepId] !== 'completed') {
+      markComplete(stepId);
+      return;
+    }
+    const next: StatusMap = { ...statuses, [stepId]: undefined };
+    setStatuses(next);
+    saveSessionProgress(steps, next).then(
+      () => setSaveFailed(false),
+      () => setSaveFailed(true),
+    );
   }
 
   function handleSkip() {

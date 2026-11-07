@@ -114,9 +114,8 @@ function FocusSidebar({
               <button
                 type="button"
                 onClick={() => onCheck(step.id)}
-                disabled={isCompleted}
-                aria-label={isCompleted ? `${step.text} is complete` : `Mark "${step.text}" complete`}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30 disabled:cursor-default"
+                aria-label={isCompleted ? `Unmark "${step.text}"` : `Mark "${step.text}" complete`}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30"
               >
                 {isCompleted ? (
                   <span
