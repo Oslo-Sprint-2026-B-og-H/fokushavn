@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import FocusSidebar from '@/components/FocusSidebar';
 import LeaveConfirmDialog from '@/components/LeaveConfirmDialog';
-import LoadingView from '@/components/LoadingView';
 import StepPanel from '@/components/StepPanel';
 import VocabularyHelp from '@/components/VocabularyHelp';
 import VoiceAgent from '@/components/VoiceAgent';
@@ -9,13 +8,12 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { isPrimaryShortcut } from '@/lib/shortcuts';
 import {
+  localizeSession,
   saveSessionProgress,
-  saveTranslatedSession,
-  translateSessionContent,
+  type LocalizedSession,
   type SavedSession,
   type SavedStep,
   type StepStatus,
-  type TranslatableContent,
 } from '@/lib/sessions';
 
 type FocusViewProps = {
@@ -27,6 +25,8 @@ type FocusViewProps = {
   onSaved: () => void;
   onEditHomework: () => void;
 };
+
+type FocusSessionProps = Omit<FocusViewProps, 'session'> & { session: LocalizedSession };
 
 type Phase = 'idle' | 'flashing' | 'leaving' | 'finishing';
 type StatusMap = Record<string, StepStatus | undefined>;
@@ -75,18 +75,10 @@ function FocusSession({
   onFinish,
   onSaved,
   onEditHomework,
-}: FocusViewProps) {
-  const { t, language } = useLanguage();
-  const [content, setContent] = useState<TranslatableContent>(() => ({
-    session_title: session.session_title,
-    vocabulary: session.vocabulary,
-    steps: session.steps,
-  }));
-  const { steps, vocabulary, session_title: title } = content;
+}: FocusSessionProps) {
+  const { t } = useLanguage();
+  const { steps, session_title: title } = session;
   const total = steps.length;
-  const translatedLanguageRef = useRef(language);
-  const [translating, setTranslating] = useState(false);
-  const [translateFailed, setTranslateFailed] = useState(false);
 
   const [index, setIndex] = useState(startIndex);
   const [statuses, setStatuses] = useState<StatusMap>(() => initialStatuses(steps));
@@ -101,7 +93,7 @@ function FocusSession({
 
   const step = steps[index];
   const isLast = index === total - 1;
-  const hasVocabulary = vocabulary.length > 0;
+  const hasVocabulary = session.vocabulary.length > 0;
   const isFinishing = phase === 'finishing';
   const isFlashing = phase === 'flashing';
   const completedCount = countCompleted(statuses);
@@ -113,30 +105,6 @@ function FocusSession({
     },
     [],
   );
-
-  useEffect(() => {
-    if (translatedLanguageRef.current === language) return;
-    translatedLanguageRef.current = language;
-    let active = true;
-    setTranslating(true);
-    setTranslateFailed(false);
-    (async () => {
-      try {
-        const translated = await translateSessionContent(content, language);
-        if (!active) return;
-        setContent(translated);
-        setTranslating(false);
-        saveTranslatedSession(session.id, translated).catch(() => setTranslateFailed(true));
-      } catch {
-        if (!active) return;
-        setTranslating(false);
-        setTranslateFailed(true);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [language, content, session.id]);
 
   useEffect(() => {
     if (toastKey === null) return;
@@ -177,7 +145,7 @@ function FocusSession({
   }
 
   function handlePrimary() {
-    if (phase !== 'idle' || translating) return;
+    if (phase !== 'idle') return;
     const added = markComplete(step.id);
     setPhase('flashing');
     later(() => moveOn(added ? completedCount + 1 : completedCount), FLASH_MS);
@@ -266,13 +234,7 @@ function FocusSession({
             {t('saveFailed')}
           </p>
         )}
-        {translateFailed && (
-          <p role="alert" className="text-sm font-medium text-red-600">
-            {t('genericError')}
-          </p>
-        )}
-        {!isFinishing && translating && <LoadingView />}
-        {!isFinishing && !translating && (
+        {!isFinishing && (
           <div
             className={`grid gap-6 ${hasVocabulary ? 'lg:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] lg:items-start' : ''}`}
           >
@@ -292,22 +254,24 @@ function FocusSession({
                 onSkip={handleSkip}
               />
             </div>
-            {hasVocabulary && <VocabularyHelp items={vocabulary} />}
+            {hasVocabulary && <VocabularyHelp items={session.vocabulary} />}
           </div>
         )}
       </div>
 
       {confirmOpen && <LeaveConfirmDialog onCancel={() => setConfirmOpen(false)} onLeave={onLeave} />}
-      <VoiceAgent step={step} vocabulary={vocabulary} />
+      <VoiceAgent step={step} vocabulary={session.vocabulary} />
     </div>
   );
 }
 
 function FocusView(props: FocusViewProps) {
-  if (!props.session.steps.length) {
+  const { language } = useLanguage();
+  const session = localizeSession(props.session, language);
+  if (!session.steps.length) {
     return <EmptySteps onBack={props.onLeave} />;
   }
-  return <FocusSession {...props} />;
+  return <FocusSession {...props} session={session} />;
 }
 
 export default FocusView;

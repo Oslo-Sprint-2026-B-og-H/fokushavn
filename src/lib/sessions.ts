@@ -1,20 +1,32 @@
 import { supabase } from '@/lib/supabase';
 import { parseHints, parseVocabulary, type Breakdown, type Step, type VocabularyItem } from '@/lib/breakdown';
 import { parseStoredFiles, type StoredFile } from '@/lib/homeworkFile';
+import type { Language } from '@/lib/translations';
 
 export type SavedStep = Step & {
   id: string;
   completed: boolean;
   skipped: boolean;
+  text_en: string;
+  text_no: string;
+  hints_en: string[];
+  hints_no: string[];
 };
 
 export type SavedSession = {
   id: string;
-  session_title: string;
   homework_text: string;
-  vocabulary: VocabularyItem[];
   files: StoredFile[];
+  session_title_en: string;
+  session_title_no: string;
+  vocab_en: VocabularyItem[];
+  vocab_no: VocabularyItem[];
   steps: SavedStep[];
+};
+
+export type LocalizedSession = Pick<SavedSession, 'id' | 'homework_text' | 'files' | 'steps'> & {
+  session_title: string;
+  vocabulary: VocabularyItem[];
 };
 
 export type RecentSession = {
@@ -26,9 +38,24 @@ export type RecentSession = {
 export type StepStatus = 'completed' | 'skipped';
 
 const RECENT_LIMIT = 50;
-const STEP_COLUMNS = 'id, step_number, text, est_minutes, type, completed, skipped, hints';
+const STEP_COLUMNS =
+  'id, step_number, text, est_minutes, type, completed, skipped, hints, text_en, text_no, hints_en, hints_no';
+const SESSION_COLUMNS = 'id, session_title, homework_text, vocabulary, files_data, title_en, title_no, vocab_en, vocab_no';
 
-type StepRow = Omit<SavedStep, 'hints'> & { hints?: unknown };
+type StepRow = {
+  id: string;
+  step_number: number;
+  text: string;
+  est_minutes: number;
+  type: Step['type'];
+  completed: boolean;
+  skipped: boolean;
+  hints?: unknown;
+  text_en?: unknown;
+  text_no?: unknown;
+  hints_en?: unknown;
+  hints_no?: unknown;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -60,7 +87,19 @@ function toSavedSteps(rows: unknown[]): SavedStep[] {
   return rows
     .map((row) => {
       if (!isStepRow(row)) throw new Error('Unexpected step data');
-      return { ...row, hints: parseHints(row.hints) };
+      const textEn = typeof row.text_en === 'string' ? row.text_en : row.text;
+      const textNo = typeof row.text_no === 'string' ? row.text_no : row.text;
+      const hintsEn = parseHints(row.hints_en ?? row.hints);
+      const hintsNo = parseHints(row.hints_no ?? row.hints);
+      return {
+        ...row,
+        text: textEn,
+        hints: hintsEn,
+        text_en: textEn,
+        text_no: textNo,
+        hints_en: hintsEn,
+        hints_no: hintsNo,
+      };
     })
     .sort((a, b) => a.step_number - b.step_number);
 }
@@ -74,8 +113,12 @@ export async function createSession(
     .from('sessions')
     .insert({
       homework_text: homeworkText,
-      session_title: breakdown.session_title,
-      vocabulary: breakdown.vocabulary,
+      session_title: breakdown.session_title_en,
+      vocabulary: breakdown.vocabulary_en,
+      title_en: breakdown.session_title_en,
+      title_no: breakdown.session_title_no,
+      vocab_en: breakdown.vocabulary_en,
+      vocab_no: breakdown.vocabulary_no,
       files_data: files,
     })
     .select('id')
@@ -88,10 +131,14 @@ export async function createSession(
   const stepRows = breakdown.steps.map((step) => ({
     session_id: session.id,
     step_number: step.step_number,
-    text: step.text,
+    text: step.text_en,
     est_minutes: step.est_minutes,
     type: step.type,
-    hints: step.hints,
+    hints: step.hints_en,
+    text_en: step.text_en,
+    text_no: step.text_no,
+    hints_en: step.hints_en,
+    hints_no: step.hints_no,
   }));
 
   const { data: rows, error: stepsError } = await supabase.from('steps').insert(stepRows).select(STEP_COLUMNS);
@@ -103,11 +150,29 @@ export async function createSession(
 
   return {
     id: session.id,
-    session_title: breakdown.session_title,
     homework_text: homeworkText,
-    vocabulary: breakdown.vocabulary,
     files,
+    session_title_en: breakdown.session_title_en,
+    session_title_no: breakdown.session_title_no,
+    vocab_en: breakdown.vocabulary_en,
+    vocab_no: breakdown.vocabulary_no,
     steps: toSavedSteps(rows),
+  };
+}
+
+export function localizeSession(session: SavedSession, language: Language): LocalizedSession {
+  const isNorwegian = language === 'no';
+  return {
+    id: session.id,
+    homework_text: session.homework_text,
+    files: session.files,
+    session_title: isNorwegian ? session.session_title_no : session.session_title_en,
+    vocabulary: isNorwegian ? session.vocab_no : session.vocab_en,
+    steps: session.steps.map((step) => ({
+      ...step,
+      text: isNorwegian ? step.text_no : step.text_en,
+      hints: isNorwegian ? step.hints_no : step.hints_en,
+    })),
   };
 }
 
@@ -128,7 +193,7 @@ export async function listRecentSessions(): Promise<RecentSession[]> {
 export async function loadSession(sessionId: string): Promise<SavedSession> {
   const { data: session, error: sessionError } = await supabase
     .from('sessions')
-    .select('id, session_title, homework_text, vocabulary, files_data')
+    .select(SESSION_COLUMNS)
     .eq('id', sessionId)
     .maybeSingle();
 
@@ -149,12 +214,17 @@ export async function loadSession(sessionId: string): Promise<SavedSession> {
     throw new Error('Could not load session');
   }
 
+  const titleEn = typeof session.title_en === 'string' ? session.title_en : session.session_title;
+  const titleNo = typeof session.title_no === 'string' ? session.title_no : session.session_title;
+
   return {
     id: sessionId,
-    session_title: session.session_title,
     homework_text: session.homework_text,
-    vocabulary: parseVocabulary(session.vocabulary),
     files: parseStoredFiles(session.files_data),
+    session_title_en: titleEn,
+    session_title_no: titleNo,
+    vocab_en: parseVocabulary(session.vocab_en ?? session.vocabulary),
+    vocab_no: parseVocabulary(session.vocab_no ?? session.vocabulary),
     steps: toSavedSteps(rows),
   };
 }
@@ -179,67 +249,4 @@ export async function saveSessionProgress(
     }),
   );
   if (results.some(({ error }) => error)) throw new Error('Could not save progress');
-}
-
-export type TranslatableContent = Pick<SavedSession, 'session_title' | 'vocabulary' | 'steps'>;
-
-const TRANSLATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-session`;
-const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export async function translateSessionContent(
-  content: TranslatableContent,
-  language: string,
-): Promise<TranslatableContent> {
-  const response = await fetch(TRANSLATE_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${ANON_KEY}`,
-      apikey: ANON_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      session_title: content.session_title,
-      vocabulary: content.vocabulary.map(({ word, definition }) => ({ word, definition })),
-      steps: content.steps.map(({ text, hints }) => ({ text, hints })),
-      language,
-    }),
-  });
-
-  if (!response.ok) throw new Error(`Translation failed (${response.status})`);
-
-  const payload: unknown = await response.json();
-  if (
-    !isRecord(payload) ||
-    typeof payload.session_title !== 'string' ||
-    !Array.isArray(payload.steps) ||
-    !Array.isArray(payload.vocabulary) ||
-    payload.steps.length !== content.steps.length
-  ) {
-    throw new Error('Unexpected translation response');
-  }
-
-  return {
-    session_title: payload.session_title,
-    vocabulary: parseVocabulary(payload.vocabulary),
-    steps: content.steps.map((step, index) => {
-      const translated = payload.steps as unknown[];
-      const item = translated[index];
-      if (!isRecord(item) || typeof item.text !== 'string') throw new Error('Unexpected translation response');
-      return { ...step, text: item.text, hints: parseHints(item.hints) };
-    }),
-  };
-}
-
-export async function saveTranslatedSession(sessionId: string, content: TranslatableContent): Promise<void> {
-  const stepResults = await Promise.all(
-    content.steps.map((step) =>
-      supabase.from('steps').update({ text: step.text, hints: step.hints }).eq('id', step.id),
-    ),
-  );
-  const { error: sessionError } = await supabase
-    .from('sessions')
-    .update({ session_title: content.session_title, vocabulary: content.vocabulary })
-    .eq('id', sessionId);
-
-  if (sessionError || stepResults.some(({ error }) => error)) throw new Error('Could not save translation');
 }

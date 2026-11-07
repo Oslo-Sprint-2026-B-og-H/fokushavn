@@ -13,11 +13,7 @@ const ALLOWED_INLINE_MIME_TYPES = new Set(['application/pdf', 'image/png', 'imag
 const FILE_INSTRUCTION =
   'If files are attached, extract the homework content from them. If the text box also contains instructions, combine them.';
 
-function languageInstruction(language: string) {
-  return language === "no"
-    ? "Write all titles, instructions, vocabulary definitions, and hints in Norwegian (bokmål). Keep embedded homework content in its original language."
-    : "Write all titles, instructions, vocabulary definitions, and hints in English. Keep embedded homework content in its original language.";
-}
+const BILINGUAL_INSTRUCTION = `Generate the output in BOTH English (en) and Norwegian (no, bokmål). If the homework is a language-learning task (e.g., an English text for a Norwegian student), keep the actual reading text in its original language in both versions, but translate the surrounding instructions, titles, vocabulary definitions, and hints. Use the same number of steps and hints in both languages.`;
 
 const SYSTEM_PROMPT = `You may receive one or more images or PDF documents alongside text. If documents are provided, your first job is to read them carefully (extract text, read math problems, interpret diagrams). Use the extracted content from the documents as the homework assignment and break it down into steps just like you would with pasted text.
 
@@ -25,23 +21,29 @@ You are an elite educational psychologist and instructional designer. Your job i
 
 Return ONLY valid JSON with this exact structure:
 {
-  "session_title": "short 3-6 word title",
-  "vocabulary": [
+  "session_title_en": "short 3-6 word title in English",
+  "session_title_no": "short 3-6 word title in Norwegian",
+  "vocabulary_en": [
     { "word": "example word", "definition": "Simple, plain-English definition." }
+  ],
+  "vocabulary_no": [
+    { "word": "eksempelord", "definition": "Enkel definisjon på norsk." }
   ],
   "steps": [
     {
       "step_number": 1,
-      "text": "The action instruction AND the embedded homework content.",
+      "text_en": "The action instruction AND the embedded homework content, in English.",
+      "text_no": "The action instruction AND the embedded homework content, in Norwegian.",
       "est_minutes": 5,
       "type": "action",
-      "hints": []
+      "hints_en": [],
+      "hints_no": []
     }
   ]
 }
 
 === CORE RULES (APPLY TO ALL SUBJECTS) ===
-1. EMBED CONTENT: The user must NEVER look at their original document. Paste the actual reading text, math problems, or questions directly into the "text" field. Use \\n\\n to separate instructions from the embedded content.
+1. EMBED CONTENT: The user must NEVER look at their original document. Paste the actual reading text, math problems, or questions directly into both the "text_en" and "text_no" fields. Use \\n\\n to separate instructions from the embedded content.
 2. CHUNKING: Never present more than 2-3 paragraphs of text or more than 3 math problems in a single step.
 3. BREAKS: Insert a break step (type: "break") after every 2 or 3 action steps.
 4. IMPERATIVE VERBS: Start every action step with a specific verb (Read, Solve, Write, Analyze, Outline, Calculate). Never use vague verbs like "Review" or "Study".
@@ -145,7 +147,6 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const homework = typeof body?.text === "string" ? body.text.trim() : "";
     const rawFiles: unknown = body?.files ?? [];
-    const language = typeof body?.language === "string" ? body.language : "en";
 
     if (homework.length > MAX_CHARS) {
       return jsonResponse({ error: "Homework text is too long" }, 400);
@@ -198,7 +199,7 @@ Deno.serve(async (req: Request) => {
     const response = await generateWithRetry(
       ai,
       contents,
-      `${SYSTEM_PROMPT}\n\n${languageInstruction(language)}`,
+      `${SYSTEM_PROMPT}\n\n${BILINGUAL_INSTRUCTION}`,
     );
 
     return jsonResponse({ text: response.text ?? "" });

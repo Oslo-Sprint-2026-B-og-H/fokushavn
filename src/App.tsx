@@ -25,6 +25,7 @@ import {
 import {
   createSession,
   loadSession,
+  localizeSession,
   markStep,
   type SavedSession,
 } from '@/lib/sessions';
@@ -102,7 +103,7 @@ function App() {
     }
 
     try {
-      const breakdown = await breakDownHomework(promptText, toInlineFiles(storedFiles), language);
+      const breakdown = await breakDownHomework(promptText, toInlineFiles(storedFiles));
       const saved = await createSession(text, breakdown, storedFiles);
       setActiveSession(saved);
       setSourceHomework(null);
@@ -236,7 +237,7 @@ function App() {
         )}
         {authSession && view === 'complete' && activeSession && (
           <CompletionView
-            title={activeSession.session_title}
+            title={localizeSession(activeSession, language).session_title}
             completed={completedSteps}
             total={activeSession.steps.length}
             onStartOver={returnToInput}
