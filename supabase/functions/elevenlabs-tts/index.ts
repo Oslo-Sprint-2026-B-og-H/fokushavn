@@ -38,12 +38,13 @@ Deno.serve(async (req: Request) => {
         "xi-api-key": apiKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ text, model_id: "eleven_monolingual_v1" }),
+      body: JSON.stringify({ text, model_id: "eleven_multilingual_v2" }),
     });
 
     if (!response.ok) {
-      console.error("elevenlabs-tts upstream failed", response.status);
-      return jsonResponse({ error: "Could not generate speech" }, 502);
+      const detail = await response.text();
+      console.error("elevenlabs-tts upstream failed", response.status, detail);
+      return jsonResponse({ error: "Could not generate speech", upstreamStatus: response.status, detail }, 502);
     }
 
     const audio = await response.arrayBuffer();

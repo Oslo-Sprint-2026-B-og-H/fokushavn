@@ -14,7 +14,8 @@ export async function fetchSpeechAudio(text: string): Promise<Blob> {
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed (${response.status})`);
+    const detail = await response.text();
+    throw new Error(`Speech request failed (${response.status}): ${detail}`);
   }
 
   return response.blob();

@@ -58,7 +58,8 @@ export function useReadAloud(text: string) {
       await audio.play();
       if (requestRef.current !== requestId) return;
       setStatus('playing');
-    } catch {
+    } catch (error) {
+      console.error('Read aloud failed', error);
       if (requestRef.current !== requestId) return;
       release();
       setStatus('error');

@@ -5,17 +5,17 @@
       "hasChanged": false,
       "hash": "d76fe963a5cdda0ae06170c23e726fd4d98d645130262237b623400ce2004726"
     },
-    "explain-text": {
-      "hasChanged": false,
-      "hash": "706f00762831d27fde6f5f633f6adc3ea67aaa7fc2bef3f26c7930012e56ba59"
-    },
     "elevenlabs-token": {
       "hasChanged": false,
       "hash": "bb94408bddb8febca39ba25f16e8a7af9150972cd082639e37c8c9314c48ad40"
     },
     "elevenlabs-tts": {
       "hasChanged": false,
-      "hash": "271edb25659a6e45969457a39a535bed3f4d512a4f1a23a6799da3058736dfb2"
+      "hash": "f4c7d4526dc78e71621f38cd0b1e32f423d640127fb84d61f246338e2e296863"
+    },
+    "explain-text": {
+      "hasChanged": false,
+      "hash": "706f00762831d27fde6f5f633f6adc3ea67aaa7fc2bef3f26c7930012e56ba59"
     }
   }
 }

@@ -13,6 +13,7 @@ function RecentSessions({ onResume }: RecentSessionsProps) {
   const [loadFailed, setLoadFailed] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [openFailed, setOpenFailed] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -51,9 +52,11 @@ function RecentSessions({ onResume }: RecentSessionsProps) {
       <p className="mt-4 text-sm text-ink/60">{t('noSessions')}</p>
     );
   } else {
+    const visibleSessions = showAll ? sessions : sessions.slice(0, 5);
     body = (
+      <>
       <ul className="mt-4 divide-y divide-ink/10 rounded-xl border border-ink/10 bg-white">
-        {sessions.map((session) => (
+        {visibleSessions.map((session) => (
           <li key={session.id} className="flex items-center justify-between gap-4 px-5 py-4">
             <div className="min-w-0">
               <p className="break-words text-base font-medium text-ink">{session.session_title}</p>
@@ -70,6 +73,16 @@ function RecentSessions({ onResume }: RecentSessionsProps) {
           </li>
         ))}
       </ul>
+      {sessions.length > 5 ? (
+        <button
+          type="button"
+          onClick={() => setShowAll((current) => !current)}
+          className="mt-3 text-sm font-medium text-ink/60 underline-offset-4 transition-colors hover:text-ink hover:underline focus:outline-none focus-visible:underline"
+        >
+          {showAll ? t('showLess') : t('showMore')}
+        </button>
+      ) : null}
+      </>
     );
   }
 
