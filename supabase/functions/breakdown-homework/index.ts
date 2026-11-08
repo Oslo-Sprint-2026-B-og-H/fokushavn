@@ -15,6 +15,10 @@ const FILE_INSTRUCTION =
 
 const BILINGUAL_INSTRUCTION = `Generate the output in BOTH English (en) and Norwegian (no, bokmål). If the homework is a language-learning task (e.g., an English text for a Norwegian student), keep the actual reading text in its original language in both versions, but translate the surrounding instructions, titles, vocabulary definitions, and hints. Use the same number of steps and hints in both languages.`;
 
+const ENGLISH_ONLY_INSTRUCTION = `Generate ONLY the English content. Return only these keys: session_title_en, vocabulary_en, and for each step: step_number, text_en, est_minutes, type, hints_en. Do not include any _no keys.`;
+
+const NORWEGIAN_ONLY_INSTRUCTION = `Generate ONLY the Norwegian (bokmål) content. Return only these keys: session_title_no, vocabulary_no, and for each step: text_no, hints_no. Produce exactly one step entry per step in order, following the same step plan as the homework requires. Do not include any _en keys. If the homework is a language-learning task, keep the reading text in its original language, but translate the instructions, titles, vocabulary definitions, and hints.`;
+
 const SYSTEM_PROMPT = `You may receive one or more images or PDF documents alongside text. If documents are provided, your first job is to read them carefully (extract text, read math problems, interpret diagrams). Use the extracted content from the documents as the homework assignment and break it down into steps just like you would with pasted text.
 
 You are an elite educational psychologist and instructional designer. Your job is to take any homework assignment and break it into the most scientifically optimal, ADHD-friendly micro-steps. You must embed the actual homework content directly into the steps.
@@ -106,8 +110,13 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-const MODELS = ["gemini-3.8-flash", "gemini-3.7-flash"];
+const MODEL = "gemini-2.5-flash-lite";
 const MAX_ATTEMPTS = 3;
+const GENERATION_CONFIG = {
+  temperature: 0.1,
+  responseMimeType: "application/json",
+  thinkingConfig: { thinkingBudget: 0 },
+};
 
 type InlineFile = { mimeType: string; data: string };
 type GeminiContents =
@@ -116,26 +125,80 @@ type GeminiContents =
 
 async function generateWithRetry(ai: GoogleGenAI, contents: GeminiContents, systemPrompt: string) {
   let lastError: unknown;
-  for (const model of MODELS) {
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      try {
-        return await ai.models.generateContent({
-          model,
-          contents,
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: "application/json",
-          },
-        });
-      } catch (err) {
-        lastError = err;
-        const message = err instanceof Error ? err.message : String(err);
-        if (!/\b(503|429|500)\b/.test(message)) throw err;
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-      }
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await ai.models.generateContent({
+        model: MODEL,
+        contents,
+        config: { ...GENERATION_CONFIG, systemInstruction: systemPrompt },
+      });
+    } catch (err) {
+      lastError = err;
+      const message = err instanceof Error ? err.message : String(err);
+      if (!/\b(503|429|500)\b/.test(message)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
     }
   }
   throw lastError;
+}
+
+type ModelJson = Record<string, any>;
+
+function parseModelJson(text: string): ModelJson {
+  const cleaned = text
+    .replace(/^\s*```(?:json)?\s*|\s*```\s*$/gi, "")
+    .replace(/^\s*json\s*(?=\{)/i, "")
+    .trim();
+  return JSON.parse(cleaned);
+}
+
+async function generateOnce(ai: GoogleGenAI, contents: GeminiContents, instruction: string): Promise<ModelJson> {
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents,
+    config: { ...GENERATION_CONFIG, systemInstruction: `${SYSTEM_PROMPT}\n\n${instruction}` },
+  });
+  return parseModelJson(response.text ?? "");
+}
+
+function mergeLanguages(english: ModelJson, norwegian: ModelJson): ModelJson {
+  if (!Array.isArray(english.steps)) throw new Error("English steps missing");
+  const englishSteps: ModelJson[] = english.steps;
+  const norwegianSteps: ModelJson[] = Array.isArray(norwegian.steps) ? norwegian.steps : [];
+  const useNorwegian =
+    englishSteps.length === norwegianSteps.length &&
+    typeof norwegian.session_title_no === "string" &&
+    norwegianSteps.every((step) => typeof step?.text_no === "string");
+
+  return {
+    session_title_en: english.session_title_en,
+    session_title_no: useNorwegian ? norwegian.session_title_no : english.session_title_en,
+    vocabulary_en: english.vocabulary_en,
+    vocabulary_no: useNorwegian ? norwegian.vocabulary_no : english.vocabulary_en,
+    steps: englishSteps.map((step, index) => ({
+      step_number: step.step_number,
+      text_en: step.text_en,
+      text_no: useNorwegian ? norwegianSteps[index].text_no : step.text_en,
+      est_minutes: step.est_minutes,
+      type: step.type,
+      hints_en: step.hints_en,
+      hints_no: useNorwegian ? norwegianSteps[index].hints_no : step.hints_en,
+    })),
+  };
+}
+
+async function generateBilingualBreakdown(ai: GoogleGenAI, contents: GeminiContents): Promise<string> {
+  try {
+    const [english, norwegian] = await Promise.all([
+      generateOnce(ai, contents, ENGLISH_ONLY_INSTRUCTION),
+      generateOnce(ai, contents, NORWEGIAN_ONLY_INSTRUCTION),
+    ]);
+    return JSON.stringify(mergeLanguages(english, norwegian));
+  } catch (err) {
+    console.error("Parallel breakdown failed, falling back to a single request", err);
+    const response = await generateWithRetry(ai, contents, `${SYSTEM_PROMPT}\n\n${BILINGUAL_INSTRUCTION}`);
+    return response.text ?? "";
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -196,13 +259,9 @@ Deno.serve(async (req: Request) => {
           },
         ]
       : homework;
-    const response = await generateWithRetry(
-      ai,
-      contents,
-      `${SYSTEM_PROMPT}\n\n${BILINGUAL_INSTRUCTION}`,
-    );
+    const text = await generateBilingualBreakdown(ai, contents);
 
-    return jsonResponse({ text: response.text ?? "" });
+    return jsonResponse({ text });
   } catch (err) {
     console.error("breakdown-homework failed", err);
     return jsonResponse({ error: "Could not break down homework" }, 500);
