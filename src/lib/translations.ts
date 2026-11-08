@@ -45,6 +45,8 @@ const en = {
 
   recentLoadFailed: "Couldn't load your recent sessions.",
   loadingSessions: 'Loading your sessions…',
+  noHints: 'No hints available.',
+  noVocabulary: 'None',
   noSessions: 'No sessions yet — paste your homework above to get started.',
   opening: 'Opening…',
   openFailed: "Couldn't open that session — try again.",
@@ -150,6 +152,8 @@ const no: Record<TranslationKey, string> = {
 
   recentLoadFailed: 'Kunne ikke laste de nylige øktene dine.',
   loadingSessions: 'Laster øktene dine…',
+  noHints: 'Ingen hint tilgjengelig.',
+  noVocabulary: 'Ingen',
   noSessions: 'Ingen økter ennå — lim inn leksene dine over for å komme i gang.',
   opening: 'Åpner…',
   openFailed: 'Kunne ikke åpne økten — prøv igjen.',

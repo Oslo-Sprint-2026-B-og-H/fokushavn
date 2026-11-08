@@ -5,25 +5,32 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { fetchConversationToken } from '@/lib/elevenlabs';
 import type { VocabularyItem } from '@/lib/breakdown';
 import type { SavedStep } from '@/lib/sessions';
+import type { Language } from '@/lib/translations';
 
 type VoiceAgentProps = {
   step: SavedStep;
   vocabulary: VocabularyItem[];
 };
 
-function buildDynamicVariables(step: SavedStep, vocabulary: VocabularyItem[]) {
+function buildDynamicVariables(
+  step: SavedStep,
+  vocabulary: VocabularyItem[],
+  language: Language,
+  copy: { noHints: string; noVocabulary: string },
+) {
   return {
+    language,
     current_task: step.text,
-    current_hints: step.hints.length > 0 ? step.hints.join(' | ') : 'No hints available.',
+    current_hints: step.hints.length > 0 ? step.hints.join(' | ') : copy.noHints,
     current_vocabulary:
       vocabulary.length > 0
         ? vocabulary.map((item) => `${item.word}: ${item.definition}`).join(' | ')
-        : 'None',
+        : copy.noVocabulary,
   };
 }
 
 function VoiceAgent({ step, vocabulary }: VoiceAgentProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isStarting, setIsStarting] = useState(false);
   const [startFailed, setStartFailed] = useState(false);
   const { startSession, endSession, status } = useConversation();
@@ -46,7 +53,10 @@ function VoiceAgent({ step, vocabulary }: VoiceAgentProps) {
       startSession({
         conversationToken: token,
         connectionType: 'webrtc',
-        dynamicVariables: buildDynamicVariables(step, vocabulary),
+        dynamicVariables: buildDynamicVariables(step, vocabulary, language, {
+          noHints: t('noHints'),
+          noVocabulary: t('noVocabulary'),
+        }),
       });
     } catch {
       setStartFailed(true);

@@ -1,10 +1,12 @@
+import { useLanguage } from '@/hooks/useLanguage';
 import { parseStepContent, type ContentBlock } from '@/lib/stepContent';
+import type { Translate } from '@/lib/translations';
 
 type StepBodyProps = {
   text: string;
 };
 
-function BlockView({ block }: { block: ContentBlock }) {
+function BlockView({ block, t }: { block: ContentBlock; t: Translate }) {
   switch (block.kind) {
     case 'heading':
       return <h3 className="pt-3 text-[22px] font-semibold leading-[1.3] text-ink">{block.text}</h3>;
@@ -20,7 +22,7 @@ function BlockView({ block }: { block: ContentBlock }) {
       return (
         <div className="flex gap-4 rounded-xl border border-ink/10 bg-white p-5">
           <span className="shrink-0 pt-0.5 text-sm font-semibold uppercase tracking-wide text-ink/60">
-            {block.label}
+            {t('question')} {block.number}
           </span>
           <p className="min-w-0 text-[18px] font-medium leading-[1.6] text-ink">{block.text}</p>
         </div>
@@ -29,6 +31,7 @@ function BlockView({ block }: { block: ContentBlock }) {
 }
 
 function StepBody({ text }: StepBodyProps) {
+  const { t } = useLanguage();
   const content = parseStepContent(text);
 
   return (
@@ -43,7 +46,7 @@ function StepBody({ text }: StepBodyProps) {
       </div>
 
       {content.blocks.map((block, index) => (
-        <BlockView key={index} block={block} />
+        <BlockView key={index} block={block} t={t} />
       ))}
     </div>
   );

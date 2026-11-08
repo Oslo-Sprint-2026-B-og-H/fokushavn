@@ -4,7 +4,7 @@ export type ContentBlock =
   | { kind: 'heading'; text: string }
   | { kind: 'paragraph'; text: string }
   | { kind: 'equation'; text: string }
-  | { kind: 'question'; label: string; text: string };
+  | { kind: 'question'; number: string; text: string };
 
 export type ParsedStepContent = {
   title: string;
@@ -15,7 +15,7 @@ export type ParsedStepContent = {
 export type StepKind = 'break' | 'question' | 'reading' | 'task';
 
 const SENTENCE = /^(.+?[.!?])\s+(.+)$/;
-const QUESTION = /^(?:question|q)\s*(\d+)\s*[:.)-]\s*(.*)$/i;
+const QUESTION = /^(?:question|q|spørsmål)\s*(\d+)\s*[:.)-]\s*(.*)$/i;
 const TERMINAL_PUNCTUATION = /[.!?:;,"'”)]$/;
 const MAX_HEADING_CHARS = 80;
 
@@ -65,7 +65,7 @@ function parseBodyBlock(block: string): ContentBlock[] {
     return [
       {
         kind: 'question',
-        label: `Question ${question[1]}`,
+        number: question[1],
         text: [question[2], ...rest].join(' ').trim(),
       },
     ];
