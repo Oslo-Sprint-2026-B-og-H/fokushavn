@@ -110,12 +110,12 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-const MODEL = "gemini-2.5-flash-lite";
+const MODEL = "gemini-3.5-flash-lite";
 const MAX_ATTEMPTS = 3;
 const GENERATION_CONFIG = {
   temperature: 0.1,
   responseMimeType: "application/json",
-  thinkingConfig: { thinkingBudget: 0 },
+  thinkingConfig: { thinkingLevel: "low" },
 };
 
 type InlineFile = { mimeType: string; data: string };
