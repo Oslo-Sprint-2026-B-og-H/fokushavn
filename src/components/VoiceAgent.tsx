@@ -33,15 +33,24 @@ function VoiceAgent({ step, vocabulary }: VoiceAgentProps) {
   const { t, language } = useLanguage();
   const [isStarting, setIsStarting] = useState(false);
   const [startFailed, setStartFailed] = useState(false);
-  const { startSession, endSession, status } = useConversation();
+  const { startSession, endSession, sendContextualUpdate, status } = useConversation();
   const endSessionRef = useRef(endSession);
   endSessionRef.current = endSession;
+  const syncedStepIdRef = useRef<string | null>(null);
 
   useEffect(() => () => endSessionRef.current(), []);
 
   const isConnected = status === 'connected';
   const isConnecting = isStarting || status === 'connecting';
   const hasError = startFailed || status === 'error';
+
+  useEffect(() => {
+    if (!isConnected || syncedStepIdRef.current === step.id) return;
+    syncedStepIdRef.current = step.id;
+    sendContextualUpdate(
+      `The user has navigated to a new step. The new task is: "${step.text}". The new hints are: "${step.hints.length > 0 ? step.hints.join(' | ') : t('noHints')}".`,
+    );
+  }, [step.id, isConnected, sendContextualUpdate, step.text, step.hints, t]);
 
   async function handleStart() {
     setStartFailed(false);
@@ -50,6 +59,7 @@ function VoiceAgent({ step, vocabulary }: VoiceAgentProps) {
       const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
       microphone.getTracks().forEach((track) => track.stop());
       const token = await fetchConversationToken();
+      syncedStepIdRef.current = step.id;
       startSession({
         conversationToken: token,
         connectionType: 'webrtc',
