@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLanguage } from '@/hooks/useLanguage';
 import { fetchSpeechAudio } from '@/lib/elevenlabs';
 
 export type ReadAloudStatus = 'idle' | 'loading' | 'playing' | 'error';
 
 export function useReadAloud(text: string) {
+  const { language } = useLanguage();
   const [status, setStatus] = useState<ReadAloudStatus>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
@@ -42,7 +44,7 @@ export function useReadAloud(text: string) {
     setStatus('loading');
 
     try {
-      const blob = await fetchSpeechAudio(text);
+      const blob = await fetchSpeechAudio(text, language);
       if (requestRef.current !== requestId) return;
 
       const url = URL.createObjectURL(blob);

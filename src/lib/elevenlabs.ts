@@ -1,8 +1,10 @@
+import type { Language } from '@/lib/translations';
+
 const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`;
 const TOKEN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-token`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export async function fetchSpeechAudio(text: string): Promise<Blob> {
+export async function fetchSpeechAudio(text: string, language: Language): Promise<Blob> {
   const response = await fetch(TTS_URL, {
     method: 'POST',
     headers: {
@@ -10,7 +12,7 @@ export async function fetchSpeechAudio(text: string): Promise<Blob> {
       apikey: ANON_KEY,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, language }),
   });
 
   if (!response.ok) {

@@ -5,7 +5,8 @@ const corsHeaders = {
 };
 
 const MAX_CHARS = 5000;
-const VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
+const VOICE_ID = "wScwPA1qCkWo5R2dmlS8";
+const SUPPORTED_LANGUAGES = new Set(["en", "no"]);
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -22,9 +23,14 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json();
     const text = typeof body?.text === "string" ? body.text.trim() : "";
+    const language = typeof body?.language === "string" ? body.language : "en";
 
     if (!text || text.length > MAX_CHARS) {
       return jsonResponse({ error: "Text is missing or too long" }, 400);
+    }
+
+    if (!SUPPORTED_LANGUAGES.has(language)) {
+      return jsonResponse({ error: "Unsupported language" }, 400);
     }
 
     const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
@@ -38,7 +44,7 @@ Deno.serve(async (req: Request) => {
         "xi-api-key": apiKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ text, model_id: "eleven_multilingual_v2" }),
+      body: JSON.stringify({ text, model_id: "eleven_flash_v2_5", language_code: language }),
     });
 
     if (!response.ok) {
