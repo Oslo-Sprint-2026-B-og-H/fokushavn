@@ -1,3 +1,5 @@
+import { getCallerUserId } from "../_shared/auth.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -17,6 +19,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const callerId = await getCallerUserId(req);
+    if (!callerId) {
+      return jsonResponse({ error: "Sign in required" }, 401);
+    }
+
     const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
     const agentId = Deno.env.get("ELEVENLABS_AGENT_ID");
     if (!apiKey || !agentId) {

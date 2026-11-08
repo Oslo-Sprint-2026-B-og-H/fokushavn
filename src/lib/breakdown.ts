@@ -1,4 +1,5 @@
 import type { InlineFile } from '@/lib/homeworkFile';
+import { supabase } from '@/lib/supabase';
 
 export const MAX_HOMEWORK_CHARS = 5000;
 
@@ -116,10 +117,14 @@ export function parseBreakdown(raw: string): Breakdown {
 }
 
 export async function breakDownHomework(text: string, files: InlineFile[]): Promise<Breakdown> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Sign in required');
+
   const response = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${ANON_KEY}`,
+      Authorization: `Bearer ${token}`,
       apikey: ANON_KEY,
       'Content-Type': 'application/json',
     },

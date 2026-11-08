@@ -1,3 +1,5 @@
+import { getCallerUserId } from "../_shared/auth.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -21,6 +23,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const callerId = await getCallerUserId(req);
+    if (!callerId) {
+      return jsonResponse({ error: "Sign in required" }, 401);
+    }
+
     const body = await req.json();
     const text = typeof body?.text === "string" ? body.text.trim() : "";
     const language = typeof body?.language === "string" ? body.language : "en";
@@ -50,7 +57,7 @@ Deno.serve(async (req: Request) => {
     if (!response.ok) {
       const detail = await response.text();
       console.error("elevenlabs-tts upstream failed", response.status, detail);
-      return jsonResponse({ error: "Could not generate speech", upstreamStatus: response.status, detail }, 502);
+      return jsonResponse({ error: "Could not generate speech" }, 502);
     }
 
     const audio = await response.arrayBuffer();

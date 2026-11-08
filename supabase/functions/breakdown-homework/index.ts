@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "npm:@google/genai@1.0.0";
+import { getCallerUserId } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -142,6 +143,7 @@ async function generateWithRetry(ai: GoogleGenAI, contents: GeminiContents, syst
   throw lastError;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ModelJson = Record<string, any>;
 
 function parseModelJson(text: string): ModelJson {
@@ -207,6 +209,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const callerId = await getCallerUserId(req);
+    if (!callerId) {
+      return jsonResponse({ error: "Sign in required" }, 401);
+    }
+
     const body = await req.json();
     const homework = typeof body?.text === "string" ? body.text.trim() : "";
     const rawFiles: unknown = body?.files ?? [];

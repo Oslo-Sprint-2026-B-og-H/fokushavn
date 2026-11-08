@@ -1,13 +1,18 @@
+import { supabase } from '@/lib/supabase';
 import type { Language } from '@/lib/translations';
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/explain-text`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export async function explainText(selectedText: string, language: Language): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Sign in required');
+
   const response = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${ANON_KEY}`,
+      Authorization: `Bearer ${token}`,
       apikey: ANON_KEY,
       'Content-Type': 'application/json',
     },

@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "npm:@google/genai@1.0.0";
+import { getCallerUserId } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,6 +55,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const callerId = await getCallerUserId(req);
+    if (!callerId) {
+      return jsonResponse({ error: "Sign in required" }, 401);
+    }
+
     const body = await req.json();
     const phrase = typeof body?.text === "string" ? body.text.trim() : "";
     const language = typeof body?.language === "string" ? body.language : "en";
